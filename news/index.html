@@ -53,6 +53,9 @@
 <li>Shortest round-trip formatting of <code>double</code> and <code>float</code> through the vendored Ryu (v2.0) in ECMAScript <code>Number::toString</code> notation: <code>zuf_format_f64()</code>, <code>zuf_format_f32()</code>, the <code>_opt</code> variants with <code>ZUF_FMT_SCIENTIFIC</code> and <code>ZUF_FMT_TRAILING_ZERO</code>, <code>zuf_decimal_f64()</code>, <code>zuf_decimal_f32()</code>; <code><a href="../reference/fast_format_double.html">fast_format_double()</a></code>.</li>
 <li>
 <code>zufast/hash.h</code>: XXH3 64- and 128-bit hashing through the vendored <code>xxhash.h</code> (v0.8.4), one-shot and streaming with a stack-allocatable <code>zuf_hasher</code>; <code><a href="../reference/fast_hash.html">fast_hash()</a></code>. XXH3 is not a cryptographic hash.</li>
+<li>The consumer fixture <code>tools/zufasttest</code> and the <code>consumer</code> workflow: a package using zufast through <code>LinkingTo</code> alone builds, checks without a compiled-code NOTE, exports nothing but its init function, and keeps working with zufast uninstalled.</li>
+<li>
+<code>tools/run-symbol-audit</code>, libFuzzer targets for every parser (<code>tools/fuzz</code>, <code>tools/run-fuzz</code>, the <code>hardening</code> workflow) and the <code>native-checks</code> workflow.</li>
 </ul></div>
   </main></div>
 

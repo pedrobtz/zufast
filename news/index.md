@@ -50,3 +50,10 @@
   `zuf_hasher`;
   [`fast_hash()`](https://pedrobtz.github.io/zufast/reference/fast_hash.md).
   XXH3 is not a cryptographic hash.
+- The consumer fixture `tools/zufasttest` and the `consumer` workflow: a
+  package using zufast through `LinkingTo` alone builds, checks without
+  a compiled-code NOTE, exports nothing but its init function, and keeps
+  working with zufast uninstalled.
+- `tools/run-symbol-audit`, libFuzzer targets for every parser
+  (`tools/fuzz`, `tools/run-fuzz`, the `hardening` workflow) and the
+  `native-checks` workflow.
