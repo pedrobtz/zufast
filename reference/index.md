@@ -4,3 +4,5 @@
 
 - [`fast_info()`](https://pedrobtz.github.io/zufast/reference/fast_info.md)
   : Information about the compiled zufast headers
+- [`fast_utf8_valid()`](https://pedrobtz.github.io/zufast/reference/fast_utf8_valid.md)
+  : Validate UTF-8

@@ -4,6 +4,9 @@
 
 - **Pedro Z**. Author, maintainer.
 
+- **Bjoern Hoehrmann**. Copyright holder.  
+  UTF-8 decoder state table in inst/include/zufast/utf8.h
+
 ## Citation
 
 Source:
