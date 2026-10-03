@@ -6,3 +6,4 @@
 ^\.agents$
 ^tools$
 ^cran-comments\.md$
+^vignettes/articles$
