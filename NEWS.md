@@ -13,3 +13,8 @@
   Base64 (standard and URL alphabets, optional padding) codecs and UUID
   parsing and formatting; `fast_hex_encode()`, `fast_hex_decode()`,
   `fast_base64_encode()` and `fast_base64_decode()`.
+* `zufast/datetime.h`: ISO 8601 / RFC 3339 date and timestamp parsing to
+  fields, Neri-Schneider calendar arithmetic exact over the whole `int32_t`
+  day range, and RFC 3339 formatting; `fast_parse_date()`,
+  `fast_parse_datetime()`, `fast_datetime_fields()` and
+  `fast_format_datetime()`.

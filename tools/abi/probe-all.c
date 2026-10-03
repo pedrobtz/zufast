@@ -75,5 +75,27 @@ int zuf_probe_all(void)
         acc += (int)len;
     }
 
+    /* datetime.h */
+    {
+        static const char text[] = "2024-02-29T12:00:00.5+01:00";
+        char out[ZUF_DATETIME_MAX_CHARS];
+        char date[ZUF_DATE_MAX_CHARS];
+        zuf_datetime dt;
+        zuf_timestamp ts;
+        int32_t y = 0;
+        uint32_t m = 0, d = 0;
+        acc += (int)zuf_parse_date(text, text + ZUF_DATE_CHARS, &dt).status;
+        acc += (int)zuf_parse_datetime(text, text + sizeof text - 1, &dt).status;
+        acc += zuf_datetime_days(&dt);
+        ts = zuf_datetime_timestamp(&dt);
+        acc += (int)(ts.seconds % 7) + (int)ts.nanoseconds;
+        acc += zuf_days_from_civil(2024, 2, 29);
+        zuf_civil_from_days(0, &y, &m, &d);
+        acc += y + (int)m + (int)d;
+        acc += zuf_is_leap_year(2024) + (int)zuf_days_in_month(2024, 2);
+        acc += (int)zuf_format_date(date, sizeof date, 0);
+        acc += (int)zuf_format_datetime(out, sizeof out, &dt);
+    }
+
     return acc;
 }

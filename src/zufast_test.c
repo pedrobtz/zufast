@@ -376,3 +376,134 @@ SEXP zufast_test_format_uuid(SEXP raw, SEXP cap, SEXP upper)
     r = zuf_format_uuid((char *)buf, c, &u, Rf_asLogical(upper));
     return encode_result(r, buf, c);
 }
+
+/* ---- datetime.h --------------------------------------------------------- */
+
+static SEXP datetime_fields(const zuf_datetime *dt)
+{
+    SEXP f = PROTECT(Rf_allocVector(REALSXP, 10));
+    double *v = REAL(f);
+    v[0] = dt->year; v[1] = dt->month; v[2] = dt->day;
+    v[3] = dt->hour; v[4] = dt->minute; v[5] = dt->second;
+    v[6] = dt->nanosecond; v[7] = dt->offset_seconds;
+    v[8] = dt->has_time; v[9] = dt->has_offset;
+    UNPROTECT(1);
+    return f;
+}
+
+static void fields_datetime(SEXP f, zuf_datetime *dt)
+{
+    const double *v = REAL(f);
+    memset(dt, 0, sizeof *dt);
+    dt->year = (int32_t)v[0]; dt->month = (uint8_t)v[1]; dt->day = (uint8_t)v[2];
+    dt->hour = (uint8_t)v[3]; dt->minute = (uint8_t)v[4]; dt->second = (uint8_t)v[5];
+    dt->nanosecond = (uint32_t)v[6]; dt->offset_seconds = (int32_t)v[7];
+    dt->has_time = v[8] != 0; dt->has_offset = v[9] != 0;
+}
+
+/* list(status, consumed, fields, timestamp seconds, days) */
+SEXP zufast_test_parse_datetime(SEXP raw, SEXP date_only)
+{
+    const char *s = (const char *)RAW(raw);
+    zuf_datetime dt;
+    zuf_result r;
+    zuf_timestamp t;
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, 5));
+    memset(&dt, 0xEE, sizeof dt);
+    r = Rf_asLogical(date_only) ? zuf_parse_date(s, s + XLENGTH(raw), &dt)
+                                : zuf_parse_datetime(s, s + XLENGTH(raw), &dt);
+    SET_VECTOR_ELT(out, 0, Rf_ScalarInteger((int)r.status));
+    SET_VECTOR_ELT(out, 1, Rf_ScalarInteger((int)(r.ptr - s)));
+    if (r.status == ZUF_OK) {
+        t = zuf_datetime_timestamp(&dt);
+        SET_VECTOR_ELT(out, 2, datetime_fields(&dt));
+        SET_VECTOR_ELT(out, 3, Rf_ScalarReal((double)t.seconds));
+        SET_VECTOR_ELT(out, 4, Rf_ScalarReal((double)zuf_datetime_days(&dt)));
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+SEXP zufast_test_format_datetime(SEXP fields, SEXP cap)
+{
+    size_t c = (size_t)Rf_asReal(cap);
+    unsigned char *buf = sentinel_buffer(c);
+    zuf_datetime dt;
+    fields_datetime(fields, &dt);
+    return encode_result(zuf_format_datetime((char *)buf, c, &dt), buf, c);
+}
+
+SEXP zufast_test_format_date(SEXP days, SEXP cap)
+{
+    size_t c = (size_t)Rf_asReal(cap);
+    unsigned char *buf = sentinel_buffer(c);
+    return encode_result(zuf_format_date((char *)buf, c, (int32_t)Rf_asReal(days)), buf, c);
+}
+
+/* civil_from_days for each element: a 3-column integer matrix. Days are
+   doubles so the whole int32_t range is reachable. */
+SEXP zufast_test_civil_from_days(SEXP days)
+{
+    R_xlen_t i, n = XLENGTH(days);
+    SEXP out = PROTECT(Rf_allocMatrix(REALSXP, (int)n, 3));
+    double *o = REAL(out);
+    for (i = 0; i < n; i++) {
+        int32_t y;
+        uint32_t m, d;
+        zuf_civil_from_days((int32_t)REAL(days)[i], &y, &m, &d);
+        o[i] = y; o[i + n] = m; o[i + 2 * n] = d;
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+SEXP zufast_test_days_from_civil(SEXP y, SEXP m, SEXP d)
+{
+    R_xlen_t i, n = XLENGTH(y);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
+    for (i = 0; i < n; i++)
+        REAL(out)[i] = zuf_days_from_civil((int32_t)REAL(y)[i], (uint32_t)REAL(m)[i],
+                                           (uint32_t)REAL(d)[i]);
+    UNPROTECT(1);
+    return out;
+}
+
+/* c(is_leap_year, days_in_month for months 0..13) for one year */
+SEXP zufast_test_year_info(SEXP year)
+{
+    int32_t y = (int32_t)Rf_asReal(year);
+    uint32_t m;
+    SEXP out = PROTECT(Rf_allocVector(INTSXP, 15));
+    INTEGER(out)[0] = zuf_is_leap_year(y);
+    for (m = 0; m <= 13; m++) INTEGER(out)[m + 1] = (int)zuf_days_in_month(y, m);
+    UNPROTECT(1);
+    return out;
+}
+
+/* Walk [lo, hi] day by day: each day must round-trip through the civil
+   date, and each civil date must be the day after the previous one. Returns
+   the number of failures. */
+SEXP zufast_test_calendar_walk(SEXP lo, SEXP hi, SEXP step)
+{
+    int64_t d, a = (int64_t)Rf_asReal(lo), b = (int64_t)Rf_asReal(hi), s = (int64_t)Rf_asReal(step);
+    double bad = 0;
+    int32_t py = 0;
+    uint32_t pm = 0, pd = 0;
+    int have_prev = 0;
+    for (d = a; d <= b; d += s) {
+        int32_t y;
+        uint32_t m, dd;
+        zuf_civil_from_days((int32_t)d, &y, &m, &dd);
+        if (m < 1 || m > 12 || dd < 1 || dd > zuf_days_in_month(y, m)) bad++;
+        else if (zuf_days_from_civil(y, m, dd) != (int32_t)d) bad++;
+        if (s == 1 && have_prev) {
+            int next_ok;
+            if (pd < zuf_days_in_month(py, pm)) next_ok = y == py && m == pm && dd == pd + 1;
+            else if (pm < 12) next_ok = y == py && m == pm + 1 && dd == 1;
+            else next_ok = y == py + 1 && m == 1 && dd == 1;
+            if (!next_ok) bad++;
+        }
+        py = y; pm = m; pd = dd; have_prev = 1;
+    }
+    return Rf_ScalarReal(bad);
+}

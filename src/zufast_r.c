@@ -1,4 +1,6 @@
 /* The .Call wrappers behind R/. They include <zufast.h> like any consumer. */
+#include <math.h>
+
 #include <zufast.h>
 
 #include "zufast_r.h"
@@ -106,6 +108,166 @@ SEXP zufast_decode(SEXP x, SEXP kind, SEXP flags)
             SET_VECTOR_ELT(out, i, raw);
         }
         UNPROTECT(1);
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* ---- dates -------------------------------------------------------------- */
+
+/* Parse the whole of a CHARSXP; false unless every byte is consumed. */
+static bool parse_whole(SEXP s, bool date_only, zuf_datetime *dt)
+{
+    const char *first, *last;
+    zuf_result r;
+    if (s == NA_STRING) return false;
+    first = CHAR(s);
+    last = first + LENGTH(s);
+    r = date_only ? zuf_parse_date(first, last, dt) : zuf_parse_datetime(first, last, dt);
+    return r.status == ZUF_OK && r.ptr == last;
+}
+
+SEXP zufast_parse_date(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
+    double *o = REAL(out);
+    for (i = 0; i < n; i++) {
+        zuf_datetime dt;
+        o[i] = parse_whole(STRING_ELT(x, i), true, &dt) ? (double)zuf_datetime_days(&dt) : NA_REAL;
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+SEXP zufast_parse_datetime(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
+    double *o = REAL(out);
+    for (i = 0; i < n; i++) {
+        zuf_datetime dt;
+        if (parse_whole(STRING_ELT(x, i), false, &dt)) {
+            zuf_timestamp t = zuf_datetime_timestamp(&dt);
+            o[i] = (double)t.seconds + (double)t.nanoseconds / 1e9;
+        } else {
+            o[i] = NA_REAL;
+        }
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* A list of columns: year, month, day, hour, minute, second, nanosecond,
+   offset, has_time, has_offset. */
+SEXP zufast_datetime_fields(SEXP x)
+{
+    const char *names[] = {"year", "month", "day", "hour", "minute", "second",
+                           "nanosecond", "offset", "has_time", "has_offset", ""};
+    R_xlen_t i, n = XLENGTH(x);
+    int k;
+    SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
+    for (k = 0; k < 6; k++) SET_VECTOR_ELT(out, k, Rf_allocVector(INTSXP, n));
+    SET_VECTOR_ELT(out, 6, Rf_allocVector(INTSXP, n));
+    SET_VECTOR_ELT(out, 7, Rf_allocVector(INTSXP, n));
+    SET_VECTOR_ELT(out, 8, Rf_allocVector(LGLSXP, n));
+    SET_VECTOR_ELT(out, 9, Rf_allocVector(LGLSXP, n));
+    for (i = 0; i < n; i++) {
+        zuf_datetime dt;
+        int v[8];
+        bool ok;
+        memset(&dt, 0, sizeof dt);
+        ok = parse_whole(STRING_ELT(x, i), false, &dt);
+        v[0] = dt.year; v[1] = dt.month; v[2] = dt.day; v[3] = dt.hour;
+        v[4] = dt.minute; v[5] = dt.second; v[6] = (int)dt.nanosecond;
+        v[7] = dt.offset_seconds;
+        for (k = 0; k < 8; k++) INTEGER(VECTOR_ELT(out, k))[i] = ok ? v[k] : NA_INTEGER;
+        if (ok && !dt.has_offset) INTEGER(VECTOR_ELT(out, 7))[i] = NA_INTEGER;
+        if (ok && !dt.has_time) {
+            for (k = 3; k < 7; k++) INTEGER(VECTOR_ELT(out, k))[i] = NA_INTEGER;
+        }
+        LOGICAL(VECTOR_ELT(out, 8))[i] = ok ? dt.has_time : NA_LOGICAL;
+        LOGICAL(VECTOR_ELT(out, 9))[i] = ok ? dt.has_offset : NA_LOGICAL;
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* Format seconds since the epoch (POSIXct) in UTC. digits < 0: microsecond
+   resolution, shortest of 0, 3 or 6 fraction digits; 0-9: exactly that
+   many, rounded to nearest. */
+SEXP zufast_format_datetime(SEXP x, SEXP digits)
+{
+    static const double pow10[] = {1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9};
+    R_xlen_t i, n = XLENGTH(x);
+    int dig = Rf_asInteger(digits);
+    double scale = dig < 0 ? 1e6 : pow10[dig];
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        double v = REAL(x)[i], secs, units;
+        int64_t total_units, isec, days, rem;
+        int32_t y;
+        uint32_t m, d, frac;
+        zuf_datetime dt;
+        char buf[ZUF_DATETIME_MAX_CHARS + 16];
+        size_t len;
+        /* beyond the int32 day range the calendar does not reach */
+        if (!R_FINITE(v) || v > 1.8e14 || v < -1.8e14) {
+            SET_STRING_ELT(out, i, NA_STRING);
+            continue;
+        }
+        secs = floor(v);
+        units = floor((v - secs) * scale + 0.5);
+        total_units = (int64_t)units;
+        isec = (int64_t)secs;
+        if (total_units >= (int64_t)scale) { isec++; total_units -= (int64_t)scale; }
+        days = isec >= 0 ? isec / 86400 : -((-isec + 86399) / 86400);
+        rem = isec - days * 86400;
+        zuf_civil_from_days((int32_t)days, &y, &m, &d);
+        memset(&dt, 0, sizeof dt);
+        dt.year = y; dt.month = (uint8_t)m; dt.day = (uint8_t)d;
+        dt.hour = (uint8_t)(rem / 3600); dt.minute = (uint8_t)(rem / 60 % 60);
+        dt.second = (uint8_t)(rem % 60);
+        dt.has_time = true;
+        dt.has_offset = true;
+        frac = (uint32_t)total_units;
+        if (dig < 0) {
+            dt.nanosecond = frac * 1000u;
+            len = zuf_format_datetime(buf, sizeof buf, &dt);
+        } else {
+            /* the seconds without a fraction, then exactly `dig` digits */
+            int k;
+            len = zuf_format_datetime(buf, sizeof buf, &dt) - 1;   /* drop the Z */
+            if (dig > 0) {
+                buf[len++] = '.';
+                for (k = dig - 1; k >= 0; k--) {
+                    buf[len + (size_t)k] = (char)('0' + frac % 10u);
+                    frac /= 10u;
+                }
+                len += (size_t)dig;
+            }
+            buf[len++] = 'Z';
+        }
+        SET_STRING_ELT(out, i, Rf_mkCharLenCE(buf, (int)len, CE_UTF8));
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+SEXP zufast_format_date(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        double v = REAL(x)[i];
+        char buf[ZUF_DATE_MAX_CHARS];
+        size_t len;
+        if (!R_FINITE(v) || v > 2147483647.0 || v < -2147483648.0) {
+            SET_STRING_ELT(out, i, NA_STRING);
+            continue;
+        }
+        len = zuf_format_date(buf, sizeof buf, (int32_t)floor(v));
+        SET_STRING_ELT(out, i, Rf_mkCharLenCE(buf, (int)len, CE_UTF8));
     }
     UNPROTECT(1);
     return out;
