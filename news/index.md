@@ -14,3 +14,11 @@
 - `zufast/utf8.h` and
   [`fast_utf8_valid()`](https://pedrobtz.github.io/zufast/reference/fast_utf8_valid.md):
   UTF-8 validation and code-point counting with Hoehrmann’s DFA.
+- `zufast/hex.h`, `zufast/base64.h` and `zufast/uuid.h`: hex and strict
+  Base64 (standard and URL alphabets, optional padding) codecs and UUID
+  parsing and formatting;
+  [`fast_hex_encode()`](https://pedrobtz.github.io/zufast/reference/fast_hex_encode.md),
+  [`fast_hex_decode()`](https://pedrobtz.github.io/zufast/reference/fast_hex_encode.md),
+  [`fast_base64_encode()`](https://pedrobtz.github.io/zufast/reference/fast_base64_encode.md)
+  and
+  [`fast_base64_decode()`](https://pedrobtz.github.io/zufast/reference/fast_base64_encode.md).

@@ -25,3 +25,8 @@ Useful links:
 Authors:
 
 - Pedro Z <pedrobtz@gmail.com>
+
+Other contributors:
+
+- Bjoern Hoehrmann (UTF-8 decoder state table in
+  inst/include/zufast/utf8.h) \[copyright holder\]
