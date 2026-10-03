@@ -1,0 +1,1 @@
+useDynLib(zufasttest, .registration = TRUE)

@@ -34,3 +34,16 @@ jobs:
         run: |
           $CC --version
           tools/check-headers
+
+  symbol-audit:
+    name: symbol audit (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: r-lib/actions/setup-r@v2
+      - name: Design 21.3 compiled-code audit
+        run: tools/run-symbol-audit

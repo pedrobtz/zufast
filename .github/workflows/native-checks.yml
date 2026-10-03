@@ -1,0 +1,51 @@
+# Design 21.5: the package under UBSan, ASan, valgrind, LTO, gctorture and
+# rchk, plus GCC's analyzer and CRAN's special checks. Quick on each push to
+# a pull request, full after merge; the full-ci label runs the full set on a
+# pull request.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+name: native-checks
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  sanitizers:
+    uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      asan: true
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
+
+  valgrind:
+    uses: pedrobtz/r-actions/.github/workflows/valgrind.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
+
+  lto:
+    uses: pedrobtz/r-actions/.github/workflows/lto.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+
+  gctorture:
+    uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
+
+  rchk:
+    uses: pedrobtz/r-actions/.github/workflows/rchk.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+
+  analyzers:
+    uses: pedrobtz/r-actions/.github/workflows/analyzers.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      exclude: |
+        inst/include/zufast/vendor
+
+  cran-special:
+    uses: pedrobtz/r-actions/.github/workflows/cran-special.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}

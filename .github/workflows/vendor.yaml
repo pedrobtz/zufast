@@ -1,7 +1,5 @@
-# Design 18, 21.7: the vendor tree matches tools/vendor/checksums.sha256,
-# reverse-applying the patches gives back the pinned upstream files, every
-# patch is named in the manifest, inst/COPYRIGHTS and cran-comments.md, and
-# the defines in detail/vendor_config.h match the manifest. Offline.
+# Design 18, 21.7: tools/vendor/verify on every push, and on pull requests a
+# change under the vendor tree must also change the manifest and checksums.
 on:
   push:
     branches: [main, master]
@@ -16,9 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Verify vendored sources
-        run: tools/vendor/verify
+  vendor:
+    uses: pedrobtz/r-actions/.github/workflows/vendor.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      vendor-dir: inst/include/zufast/vendor
