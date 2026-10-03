@@ -1682,9 +1682,22 @@ ffc_result ffc_parse_int_string(
   }
   // this check can be eliminated for all other types, but they will all require
   // a max_digits(base) equivalent
-  if (digit_count == max_digits && i < ffc_min_safe_u64_of_base(base)) {
-    answer.outcome = FFC_OUTCOME_OUT_OF_RANGE;
-    return answer;
+  if (digit_count == max_digits) {
+    // At max_digits the accumulator may have wrapped around 2^64, and for a
+    // base whose max_digits-length range exceeds 2^64 (base 10 reaches
+    // ~5.4 * 2^64 at 20 digits) it can wrap a whole multiple of 2^64 and land
+    // back above min_safe. Decide on the leading digit instead (as simdjson
+    // and fast_float 8.3 do): ms = base^(max_digits-1) and dmax, the largest
+    // leading digit that can still fit. Within the band of leading digit
+    // dmax the value crosses 2^64 at most once, so one threshold separates
+    // the wrapped values; a larger leading digit always overflows.
+    uint64_t const ms = ffc_min_safe_u64_of_base(base);
+    uint64_t const dmax = UINT64_MAX / ms;
+    uint64_t const lead = ffc_char_to_digit(*start_digits);
+    if (lead > dmax || (lead == dmax && i < dmax * ms)) {
+      answer.outcome = FFC_OUTCOME_OUT_OF_RANGE;
+      return answer;
+    }
   }
 
   ffc_debug("i is %lld, ik is %s\n", i, (ik == FFC_INT_KIND_U64 ? "u64" :

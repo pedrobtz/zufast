@@ -2,7 +2,9 @@
 # UBSan, no R in the picture. Each target's canary build must crash on
 # tools/fuzz/canary.input, which proves the instrumentation is live; then
 # each target fuzzes from its seed corpus, briefly on pull requests and for
-# longer on the weekly schedule. The corpus is cached between runs.
+# longer on the weekly schedule; a manual run takes its budget as an input,
+# for the long sessions design 21.5 asks for. The corpus is cached between
+# runs, so the short runs add up.
 on:
   push:
     branches: [main, master]
@@ -10,6 +12,11 @@ on:
   schedule:
     - cron: "41 3 * * 0"
   workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds to fuzz each target (the job times out at 120 minutes)
+        type: number
+        default: 3600
 
 name: hardening
 
@@ -37,11 +44,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [number, datetime, uuid, base64, hex, utf8]
+        target: [number, datetime, uuid, base64, hex, utf8, hash, upstream]
     uses: pedrobtz/r-actions/.github/workflows/fuzz.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
     with:
-      harness: tools/fuzz/fuzz_${{ matrix.target }}.c
+      # fuzz_upstream is C++ (zufast against fast_float, tools/fuzz/fast_float)
+      harness: tools/fuzz/fuzz_${{ matrix.target }}.${{ matrix.target == 'upstream' && 'cpp' || 'c' }}
       sources: tools/fuzz/support.c
-      cflags: -g -O1 -fno-omit-frame-pointer -Iinst/include
+      cflags: -g -O1 -fno-omit-frame-pointer -Iinst/include -Itools/fuzz
       seed-corpus: tools/fuzz/seeds/${{ matrix.target }}
-      max-total-time: ${{ github.event_name == 'schedule' && 900 || 60 }}
+      max-total-time: ${{ github.event_name == 'workflow_dispatch' && inputs.seconds || github.event_name == 'schedule' && 1800 || 60 }}
+      timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 120 || 45 }}

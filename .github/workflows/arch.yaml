@@ -1,0 +1,44 @@
+# The suite on architectures the check matrix never reaches (r-actions
+# arch.yml): 32-bit i386 and musl, both native on an x86-64 runner, and
+# s390x under QEMU -- the one big-endian leg, which the byte-order code
+# (zuf_load_le*/be*, base64, xxHash) has nowhere else.
+#
+# Debian's R packages supply testthat on the Debian legs, with the locale R
+# CMD check asks for; Alpine builds testthat from source (fs and ps need
+# libuv-dev and linux-headers). Only testthat:
+# the template's default dependency step resolves the package against
+# installed.packages(), where it is not yet, and so installs nothing. The
+# vignette is ignored -- whether it builds is R-CMD-check's question, and an
+# unbuilt one is only warnings here.
+on:
+  schedule:
+    - cron: "17 5 * * 2"
+  workflow_dispatch:
+  pull_request:
+    paths: [.github/workflows/arch.yaml]
+
+name: arch
+
+permissions:
+  contents: read
+
+jobs:
+  arch:
+    uses: pedrobtz/r-actions/.github/workflows/arch.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      targets: >-
+        [{"name": "i386", "platform": "linux/386",
+          "image": "i386/debian:bookworm",
+          "setup": "apt-get update && apt-get install -y --no-install-recommends r-base-dev r-cran-testthat locales && echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen && locale-gen"},
+         {"name": "musl", "platform": "linux/amd64",
+          "image": "alpine:3.21",
+          "setup": "apk add --no-cache R R-dev R-doc build-base linux-headers libuv-dev"},
+         {"name": "s390x", "platform": "linux/s390x",
+          "image": "s390x/debian:bookworm",
+          "setup": "apt-get update && apt-get install -y --no-install-recommends r-base-dev r-cran-testthat locales && echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen && locale-gen"}]
+      install-dependencies: >-
+        Rscript -e 'if (!requireNamespace("testthat", quietly = TRUE)) install.packages("testthat", repos = "https://cloud.r-project.org")'
+      check-args: --no-manual --ignore-vignettes
+      error-on: warning
+      require-tests: true
+      timeout-minutes: 180

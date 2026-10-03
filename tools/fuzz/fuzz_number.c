@@ -1,6 +1,63 @@
 /* Number parsing and formatting: whatever parses formats back to the same
-   bits, under every option and base the first byte selects. */
+   bits, under every option and base the first byte selects; and what the
+   default grammar accepts, the C library reads as the same value. glibc's
+   strtod is correctly rounded, so it is an independent oracle for the
+   parser, which the round trip alone is not: a parser and formatter wrong
+   in the same way would round-trip happily. */
+#include <errno.h>
+#include <stdlib.h>
+
 #include "fuzz.h"
+
+/* The span the parser consumed, NUL-terminated for the C library. */
+static char *span(const char *s, const char *p)
+{
+    char *z = (char *)malloc((size_t)(p - s) + 1);
+    FUZZ_CHECK(z != NULL);
+    memcpy(z, s, (size_t)(p - s));
+    z[p - s] = 0;
+    return z;
+}
+
+static void against_libc(const char *s, const char *e, const zuf_num_options *opt)
+{
+    zuf_result r;
+    char *z, *end;
+    double d, want;
+    int64_t i;
+    uint64_t u;
+
+    r = zuf_parse_f64(s, e, &d);
+    if (r.status == ZUF_OK || r.status == ZUF_ERR_RANGE) {
+        z = span(s, r.ptr);
+        want = strtod(z, &end);
+        FUZZ_CHECK(*end == 0);
+        FUZZ_CHECK(memcmp(&d, &want, 8) == 0 || (d != d && want != want));
+        free(z);
+    }
+    /* integers in every base: what the parser accepted (no prefix, at
+       most a sign and leading space) strtoll reads in the same base */
+    r = zuf_parse_i64_opt(s, e, &i, opt);
+    if (r.status == ZUF_OK || r.status == ZUF_ERR_RANGE) {
+        long long ll;
+        z = span(s, r.ptr);
+        errno = 0;
+        ll = strtoll(z, &end, opt->base);
+        FUZZ_CHECK(*end == 0 && (long long)i == ll);
+        FUZZ_CHECK((r.status == ZUF_ERR_RANGE) == (errno == ERANGE));
+        free(z);
+    }
+    r = zuf_parse_u64_opt(s, e, &u, opt);
+    if (r.status == ZUF_OK || r.status == ZUF_ERR_RANGE) {
+        unsigned long long ull;
+        z = span(s, r.ptr);
+        errno = 0;
+        ull = strtoull(z, &end, opt->base);
+        FUZZ_CHECK(*end == 0 && (unsigned long long)u == ull);
+        FUZZ_CHECK((r.status == ZUF_ERR_RANGE) == (errno == ERANGE));
+        free(z);
+    }
+}
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
@@ -21,6 +78,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     opt.decimal_point = (data[0] & 0x80) ? ',' : 0;
     s = (const char *)data + 1;
     e = (const char *)data + size;
+    against_libc(s, e, &opt);
 
     r = zuf_parse_f64_opt(s, e, &d, &opt);
     FUZZ_CHECK(r.status == ZUF_ERR_INVALID ? r.ptr == s : (r.ptr > s && r.ptr <= e));

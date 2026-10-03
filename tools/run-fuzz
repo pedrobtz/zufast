@@ -4,19 +4,23 @@
 # it for SECONDS (default 30) from its seed corpus. Needs clang with
 # libFuzzer. Run from the package root.
 #
-#   tools/run-fuzz [target ...]     targets: number datetime uuid base64 hex utf8
+#   tools/run-fuzz [target ...]     targets: number datetime uuid base64 hex utf8 hash upstream
+#
+# fuzz_upstream.cpp is C++: it checks zufast against fast_float (pinned in
+# tools/fuzz/fast_float). clang compiles the mixed pair as fuzz.yml does.
 set -eu
 
 CC=${CC:-clang}
 SECONDS_PER_TARGET=${SECONDS:-30}
-TARGETS=${*:-number datetime uuid base64 hex utf8}
+TARGETS=${*:-number datetime uuid base64 hex utf8 hash upstream}
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-FLAGS="-g -O1 -fno-omit-frame-pointer -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -Iinst/include"
+FLAGS="-g -O1 -fno-omit-frame-pointer -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -Iinst/include -Itools/fuzz"
 
 status=0
 for t in $TARGETS; do
     src=tools/fuzz/fuzz_$t.c
+    [ -f "$src" ] || src=tools/fuzz/fuzz_$t.cpp
     $CC $FLAGS -DZUF_FUZZ_CANARY "$src" tools/fuzz/support.c -o "$TMP/canary_$t"
     if "$TMP/canary_$t" tools/fuzz/canary.input >"$TMP/canary_$t.log" 2>&1; then
         echo "FAIL $t: the canary build did not crash on the canary input"

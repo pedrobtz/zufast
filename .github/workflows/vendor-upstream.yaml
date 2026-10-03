@@ -1,0 +1,33 @@
+# Weekly: open an issue when a vendored library (tools/vendor/manifest.tsv)
+# has a release newer than the pinned tag. vendor.yaml guards against drift;
+# this guards against staleness -- the ffc u64 overflow fixed by patch 0003
+# had been fixed in fast_float 8.3 already.
+on:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+name: vendor-upstream
+
+permissions:
+  contents: read
+
+jobs:
+  upstream:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: ffc
+            repo: kolemannix/ffc.h
+          - source: ryu
+            repo: ulfjack/ryu
+          - source: xxhash
+            repo: Cyan4973/xxHash
+    uses: pedrobtz/r-actions/.github/workflows/vendor-upstream.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    permissions:
+      contents: read
+      issues: write
+    with:
+      upstream-repo: ${{ matrix.repo }}
+      current-version: awk -F'\t' '$1 == "${{ matrix.source }}" { print $3 }' tools/vendor/manifest.tsv
