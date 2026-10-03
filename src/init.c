@@ -10,6 +10,11 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_utf8_valid, 1),
     CALLDEF(zufast_encode, 3),
     CALLDEF(zufast_decode, 3),
+    CALLDEF(zufast_parse_date, 1),
+    CALLDEF(zufast_parse_datetime, 1),
+    CALLDEF(zufast_datetime_fields, 1),
+    CALLDEF(zufast_format_datetime, 2),
+    CALLDEF(zufast_format_date, 1),
     CALLDEF(zufast_test_status_string, 1),
     CALLDEF(zufast_test_mul128, 2),
     CALLDEF(zufast_test_parse_bool, 2),
@@ -29,6 +34,13 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_test_base64_bounds, 1),
     CALLDEF(zufast_test_parse_uuid, 1),
     CALLDEF(zufast_test_format_uuid, 3),
+    CALLDEF(zufast_test_parse_datetime, 2),
+    CALLDEF(zufast_test_format_datetime, 2),
+    CALLDEF(zufast_test_format_date, 2),
+    CALLDEF(zufast_test_civil_from_days, 1),
+    CALLDEF(zufast_test_days_from_civil, 3),
+    CALLDEF(zufast_test_year_info, 1),
+    CALLDEF(zufast_test_calendar_walk, 3),
     {NULL, NULL, 0}
 };
 

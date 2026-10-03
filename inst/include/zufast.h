@@ -20,5 +20,6 @@
 #include "zufast/hex.h"
 #include "zufast/base64.h"
 #include "zufast/uuid.h"
+#include "zufast/datetime.h"
 
 #endif /* ZUFAST_H */

@@ -2,8 +2,12 @@
 
 export(fast_base64_decode)
 export(fast_base64_encode)
+export(fast_datetime_fields)
+export(fast_format_datetime)
 export(fast_hex_decode)
 export(fast_hex_encode)
 export(fast_info)
+export(fast_parse_date)
+export(fast_parse_datetime)
 export(fast_utf8_valid)
 useDynLib(zufast, .registration = TRUE)
