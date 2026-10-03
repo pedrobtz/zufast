@@ -1,14 +1,23 @@
 Package: zufast
-Title: What the Package Does (One Line, Title Case)
+Title: Fast Portable C Primitives for Parsing and Formatting Data
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+    person("Pedro", "Z", , "pedrobtz@gmail.com", role = c("aut", "cre"))
+Description: A header-only library of small, fast, portable C99 primitives
+    for converting external text and bytes into native values and back:
+    correctly rounded number parsing, shortest round-trip number formatting,
+    ISO 8601 dates and timestamps, booleans, UUIDs, hexadecimal and Base64,
+    XXH3 hashing, half-precision floats, endian helpers and UTF-8
+    validation. Other packages use it through 'LinkingTo' alone; the R
+    functions exist to test, benchmark and demonstrate the C layer.
 License: MIT + file LICENSE
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 8.0.0
+URL: https://pedrobtz.github.io/zufast/, https://github.com/pedrobtz/zufast
+BugReports: https://github.com/pedrobtz/zufast/issues
+Depends: 
+    R (>= 4.1)
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-URL: https://pedrobtz.github.io/zufast/
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

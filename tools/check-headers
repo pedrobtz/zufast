@@ -1,0 +1,74 @@
+#!/bin/sh
+# Design 21.1: the header gate. Run from the package root.
+#
+#   1. every header under inst/include compiles standalone as C99 under
+#      -Wall -Wextra -Wpedantic -Werror, and as C++11 under -Wall -Wextra -Werror;
+#   2. a unit that includes <zufast.h> and uses nothing is warning-free
+#      (the unused-function check of design 4.5);
+#   3. a unit that calls every public function is warning-free, as C and C++;
+#   4. the installed headers mention no R API, and vendor identifiers appear
+#      only under vendor/ and detail/.
+#
+# CC and CXX select the compilers (default cc and c++).
+set -eu
+
+CC=${CC:-cc}
+CXX=${CXX:-c++}
+INC=inst/include
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+CWARN="-Wall -Wextra -Wpedantic -Werror"
+XWARN="-Wall -Wextra -Werror"
+fail=0
+
+compile_c() {   # $1 source, rest extra flags
+    src=$1; shift
+    $CC -std=c99 $CWARN "$@" -I"$INC" -c "$src" -o "$TMP/out.o"
+}
+compile_cxx() {
+    src=$1; shift
+    $CXX -std=c++11 $XWARN "$@" -I"$INC" -x c++ -c "$src" -o "$TMP/out.o"
+}
+
+echo "== standalone headers ($CC, $CXX)"
+for h in $(cd "$INC" && find . -name '*.h' ! -path './zufast/vendor/*' | sed 's|^\./||' | sort); do
+    printf '#include <%s>\ntypedef int zuf_check_nonempty;\n' "$h" > "$TMP/one.c"
+    for opt in -O0 -O2; do
+        if ! compile_c "$TMP/one.c" $opt; then echo "FAIL C99 $opt: $h"; fail=1; fi
+        if ! compile_cxx "$TMP/one.c" $opt; then echo "FAIL C++11 $opt: $h"; fail=1; fi
+    done
+done
+
+echo "== probes"
+for probe in tools/abi/probe-none.c tools/abi/probe-all.c; do
+    for opt in -O0 -O2; do
+        if ! compile_c "$probe" $opt; then echo "FAIL C99 $opt: $probe"; fail=1; fi
+        if ! compile_cxx "$probe" $opt; then echo "FAIL C++11 $opt: $probe"; fail=1; fi
+    done
+    if ! compile_c "$probe" -O2 -DZUF_NO_INT128; then echo "FAIL C99 no-int128: $probe"; fail=1; fi
+done
+
+echo "== forbidden identifiers"
+for h in $(find "$INC" -name '*.h' ! -path '*/zufast/vendor/*' | sort); do
+    # Strip /* */ and // comments; string literals in the headers hold no
+    # comment markers, so a regex is enough.
+    stripped=$(perl -0777 -pe 's{/\*.*?\*/}{ }gs; s{//[^\n]*}{}g' "$h")
+    if printf '%s\n' "$stripped" | grep -nE '\bSEXP\b|\bRf_|[<"]R\.h[>"]|Rinternals' >/dev/null; then
+        echo "FAIL R API in $h"; fail=1
+    fi
+    case "$h" in
+    */zufast/detail/*) ;;
+    *)
+        if printf '%s\n' "$stripped" | grep -nE '\bffc_|\bFFC_|\bXXH|\bryu|\bd2s|\bf2s' >/dev/null; then
+            echo "FAIL vendor identifier in public header $h"; fail=1
+        fi
+        ;;
+    esac
+done
+
+if [ "$fail" -ne 0 ]; then
+    echo "header gate FAILED"
+    exit 1
+fi
+echo "header gate passed"
