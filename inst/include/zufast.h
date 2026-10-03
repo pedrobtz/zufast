@@ -1,0 +1,18 @@
+/*
+ * zufast.h -- umbrella header: includes every zufast area header.
+ *
+ * A consumer declares `LinkingTo: zufast` and nothing else, then
+ *
+ *     #include <zufast.h>          everything
+ *     #include <zufast/status.h>   or one area at a time
+ *
+ * Every function is static inline: there is nothing to link and no
+ * implementation macro to define. See design section 4.
+ */
+#ifndef ZUFAST_H
+#define ZUFAST_H
+
+#include "zufast/version.h"
+#include "zufast/status.h"
+
+#endif /* ZUFAST_H */
