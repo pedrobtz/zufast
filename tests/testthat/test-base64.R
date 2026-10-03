@@ -1,9 +1,3 @@
-URL <- 1L
-NO_PAD <- 2L
-b64_enc <- function(raw, cap, flags = 0L) .Call(zufast_test_base64_encode, raw, cap, flags)
-b64_dec <- function(s, cap = 100, flags = 0L) .Call(zufast_test_base64_decode, str_raw(s), cap, flags)
-SENT <- as.raw(0xA5)
-
 test_that("RFC 4648 test vectors", {
   v <- c("", "f", "fo", "foo", "foob", "fooba", "foobar")
   e <- c("", "Zg==", "Zm8=", "Zm9v", "Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy")

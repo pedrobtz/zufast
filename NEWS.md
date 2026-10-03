@@ -40,3 +40,8 @@
 * `tools/run-symbol-audit`, libFuzzer targets for every parser
   (`tools/fuzz`, `tools/run-fuzz`, the `hardening` workflow) and the
   `native-checks` workflow.
+* `README.md` gives the consumer recipe in full; `vignette("linking")`
+  states the source-compatibility contract and the two deliberate
+  differences from base R; `LICENSE.note`, `cran-comments.md`;
+  `tools/benchmarks.R`, `tools/run-benchmarks` and first measurements in
+  `.agents/benchmarks.md`.
