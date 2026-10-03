@@ -1,0 +1,322 @@
+Make d2s.c and f2s.c usable as headers.
+
+The vendor tree installs ryu/d2s.c and ryu/f2s.c as ryu/d2s_impl.h and
+ryu/f2s_impl.h (tools/vendor/manifest.tsv maps the names). This patch:
+
+- makes every #include "ryu/..." relative to the including file;
+- gives the entry points d2s_buffered_n, d2s_buffered, d2s and the f2s
+  equivalents static inline linkage, in ryu.h and in the definitions;
+- routes every assert() through RYU_ASSERT, which defaults to assert and
+  which zufast defines away, so that no consumer's shared object
+  references __assert_fail.
+
+Upstream: to be submitted to ulfjack/ryu.
+
+--- a/ryu/common.h
++++ b/ryu/common.h
+@@ -18,6 +18,10 @@
+ #define RYU_COMMON_H
+ 
+ #include <assert.h>
++
++#ifndef RYU_ASSERT
++#define RYU_ASSERT(x) assert(x)
++#endif
+ #include <stdint.h>
+ #include <string.h>
+ 
+@@ -29,7 +33,7 @@
+   // Function precondition: v is not a 10-digit number.
+   // (f2s: 9 digits are sufficient for round-tripping.)
+   // (d2fixed: We print 9-digit blocks.)
+-  assert(v < 1000000000);
++  RYU_ASSERT(v < 1000000000);
+   if (v >= 100000000) { return 9; }
+   if (v >= 10000000) { return 8; }
+   if (v >= 1000000) { return 7; }
+@@ -46,24 +50,24 @@
+   // This approximation works up to the point that the multiplication overflows at e = 3529.
+   // If the multiplication were done in 64 bits, it would fail at 5^4004 which is just greater
+   // than 2^9297.
+-  assert(e >= 0);
+-  assert(e <= 3528);
++  RYU_ASSERT(e >= 0);
++  RYU_ASSERT(e <= 3528);
+   return (int32_t) (((((uint32_t) e) * 1217359) >> 19) + 1);
+ }
+ 
+ // Returns floor(log_10(2^e)).
+ static inline uint32_t log10Pow2(const int32_t e) {
+   // The first value this approximation fails for is 2^1651 which is just greater than 10^297.
+-  assert(e >= 0);
+-  assert(e <= 1650);
++  RYU_ASSERT(e >= 0);
++  RYU_ASSERT(e <= 1650);
+   return (((uint32_t) e) * 78913) >> 18;
+ }
+ 
+ // Returns floor(log_10(5^e)).
+ static inline uint32_t log10Pow5(const int32_t e) {
+   // The first value this approximation fails for is 5^2621 which is just greater than 10^1832.
+-  assert(e >= 0);
+-  assert(e <= 2620);
++  RYU_ASSERT(e >= 0);
++  RYU_ASSERT(e <= 2620);
+   return (((uint32_t) e) * 732923) >> 20;
+ }
+ 
+--- a/ryu/d2s.h
++++ b/ryu/d2s.h
+@@ -20,17 +20,17 @@
+ #include <assert.h>
+ #include <stdint.h>
+ 
+-#include "ryu/common.h"
++#include "common.h"
+ 
+ // Only include the full table if we're not optimizing for size.
+ #if !defined(RYU_OPTIMIZE_SIZE)
+-#include "ryu/d2s_full_table.h"
++#include "d2s_full_table.h"
+ #endif
+ 
+ #if defined(HAS_UINT128)
+ typedef __uint128_t uint128_t;
+ #else
+-#include "ryu/d2s_intrinsics.h"
++#include "d2s_intrinsics.h"
+ #endif
+ 
+ #define DOUBLE_MANTISSA_BITS 52
+--- a/ryu/d2s_impl.h
++++ b/ryu/d2s_impl.h
+@@ -27,9 +27,13 @@
+ //     size by about 10x (only one case, and only double) at the cost of some
+ //     performance. Currently requires MSVC intrinsics.
+ 
+-#include "ryu/ryu.h"
++#include "ryu.h"
+ 
+ #include <assert.h>
++
++#ifndef RYU_ASSERT
++#define RYU_ASSERT(x) assert(x)
++#endif
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -48,10 +52,10 @@
+ #define HAS_64_BIT_INTRINSICS
+ #endif
+ 
+-#include "ryu/common.h"
+-#include "ryu/digit_table.h"
+-#include "ryu/d2s.h"
+-#include "ryu/d2s_intrinsics.h"
++#include "common.h"
++#include "digit_table.h"
++#include "d2s.h"
++#include "d2s_intrinsics.h"
+ 
+ // We need a 64x128-bit multiplication and a subsequent 128-bit shift.
+ // Multiplication:
+@@ -182,7 +186,7 @@
+   // The average output length is 16.38 digits, so we check high-to-low.
+   // Function precondition: v is not an 18, 19, or 20-digit number.
+   // (17 digits are sufficient for round-tripping.)
+-  assert(v < 100000000000000000L);
++  RYU_ASSERT(v < 100000000000000000L);
+   if (v >= 10000000000000000L) { return 17; }
+   if (v >= 1000000000000000L) { return 16; }
+   if (v >= 100000000000000L) { return 15; }
+@@ -573,7 +577,7 @@
+   return true;
+ }
+ 
+-int d2s_buffered_n(double f, char* result) {
++static inline int d2s_buffered_n(double f, char* result) {
+   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
+   const uint64_t bits = double_to_bits(f);
+ 
+@@ -617,14 +621,14 @@
+   return to_chars(v, ieeeSign, result);
+ }
+ 
+-void d2s_buffered(double f, char* result) {
++static inline void d2s_buffered(double f, char* result) {
+   const int index = d2s_buffered_n(f, result);
+ 
+   // Terminate the string.
+   result[index] = '\0';
+ }
+ 
+-char* d2s(double f) {
++static inline char* d2s(double f) {
+   char* const result = (char*) malloc(25);
+   d2s_buffered(f, result);
+   return result;
+--- a/ryu/d2s_intrinsics.h
++++ b/ryu/d2s_intrinsics.h
+@@ -18,10 +18,14 @@
+ #define RYU_D2S_INTRINSICS_H
+ 
+ #include <assert.h>
++
++#ifndef RYU_ASSERT
++#define RYU_ASSERT(x) assert(x)
++#endif
+ #include <stdint.h>
+ 
+ // This sets RYU_32_BIT_PLATFORM as a side effect if applicable.
+-#include "ryu/common.h"
++#include "common.h"
+ 
+ #if defined(HAS_64_BIT_INTRINSICS)
+ 
+@@ -40,7 +44,7 @@
+   // Otherwise in the range [2, 59].)
+   // Check this here in case a future change requires larger shift
+   // values. In this case this function needs to be adjusted.
+-  assert(dist < 64);
++  RYU_ASSERT(dist < 64);
+   return __shiftright128(lo, hi, (unsigned char) dist);
+ }
+ 
+@@ -78,13 +82,13 @@
+ 
+ static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
+   // We don't need to handle the case dist >= 64 here (see above).
+-  assert(dist < 64);
++  RYU_ASSERT(dist < 64);
+ #if defined(RYU_OPTIMIZE_SIZE) || !defined(RYU_32_BIT_PLATFORM)
+-  assert(dist > 0);
++  RYU_ASSERT(dist > 0);
+   return (hi << (64 - dist)) | (lo >> dist);
+ #else
+   // Avoid a 64-bit shift by taking advantage of the range of shift values.
+-  assert(dist >= 32);
++  RYU_ASSERT(dist >= 32);
+   return (hi << (64 - dist)) | ((uint32_t)(lo >> 32) >> (dist - 32));
+ #endif
+ }
+@@ -182,7 +186,7 @@
+ static inline uint32_t pow5Factor(uint64_t value) {
+   uint32_t count = 0;
+   for (;;) {
+-    assert(value != 0);
++    RYU_ASSERT(value != 0);
+     const uint64_t q = div5(value);
+     const uint32_t r = ((uint32_t) value) - 5 * ((uint32_t) q);
+     if (r != 0) {
+@@ -202,7 +206,7 @@
+ 
+ // Returns true if value is divisible by 2^p.
+ static inline bool multipleOfPowerOf2(const uint64_t value, const uint32_t p) {
+-  assert(value != 0);
++  RYU_ASSERT(value != 0);
+   // return __builtin_ctzll(value) >= p;
+   return (value & ((1ull << p) - 1)) == 0;
+ }
+--- a/ryu/f2s_impl.h
++++ b/ryu/f2s_impl.h
+@@ -18,9 +18,13 @@
+ // Runtime compiler options:
+ // -DRYU_DEBUG Generate verbose debugging output to stdout.
+ 
+-#include "ryu/ryu.h"
++#include "ryu.h"
+ 
+ #include <assert.h>
++
++#ifndef RYU_ASSERT
++#define RYU_ASSERT(x) assert(x)
++#endif
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -31,8 +35,8 @@
+ #include <stdio.h>
+ #endif
+ 
+-#include "ryu/common.h"
+-#include "ryu/digit_table.h"
++#include "common.h"
++#include "digit_table.h"
+ 
+ #define FLOAT_MANTISSA_BITS 23
+ #define FLOAT_EXPONENT_BITS 8
+@@ -69,7 +73,7 @@
+ static inline uint32_t pow5Factor(uint32_t value) {
+   uint32_t count = 0;
+   for (;;) {
+-    assert(value != 0);
++    RYU_ASSERT(value != 0);
+     const uint32_t q = value / 5;
+     const uint32_t r = value % 5;
+     if (r != 0) {
+@@ -95,7 +99,7 @@
+ // It seems to be slightly faster to avoid uint128_t here, although the
+ // generated code for uint128_t looks slightly nicer.
+ static inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const int32_t shift) {
+-  assert(shift > 32);
++  RYU_ASSERT(shift > 32);
+ 
+   // The casts here help MSVC to avoid calls to the __allmul library
+   // function.
+@@ -117,7 +121,7 @@
+ #else // RYU_32_BIT_PLATFORM
+   const uint64_t sum = (bits0 >> 32) + bits1;
+   const uint64_t shiftedSum = sum >> (shift - 32);
+-  assert(shiftedSum <= UINT32_MAX);
++  RYU_ASSERT(shiftedSum <= UINT32_MAX);
+   return (uint32_t) shiftedSum;
+ #endif // RYU_32_BIT_PLATFORM
+ }
+@@ -396,7 +400,7 @@
+   return index;
+ }
+ 
+-int f2s_buffered_n(float f, char* result) {
++static inline int f2s_buffered_n(float f, char* result) {
+   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
+   const uint32_t bits = float_to_bits(f);
+ 
+@@ -422,14 +426,14 @@
+   return to_chars(v, ieeeSign, result);
+ }
+ 
+-void f2s_buffered(float f, char* result) {
++static inline void f2s_buffered(float f, char* result) {
+   const int index = f2s_buffered_n(f, result);
+ 
+   // Terminate the string.
+   result[index] = '\0';
+ }
+ 
+-char* f2s(float f) {
++static inline char* f2s(float f) {
+   char* const result = (char*) malloc(16);
+   f2s_buffered(f, result);
+   return result;
+--- a/ryu/ryu.h
++++ b/ryu/ryu.h
+@@ -21,13 +21,13 @@
+ extern "C" {
+ #endif
+ 
+-int d2s_buffered_n(double f, char* result);
+-void d2s_buffered(double f, char* result);
+-char* d2s(double f);
++static inline int d2s_buffered_n(double f, char* result);
++static inline void d2s_buffered(double f, char* result);
++static inline char* d2s(double f);
+ 
+-int f2s_buffered_n(float f, char* result);
+-void f2s_buffered(float f, char* result);
+-char* f2s(float f);
++static inline int f2s_buffered_n(float f, char* result);
++static inline void f2s_buffered(float f, char* result);
++static inline char* f2s(float f);
+ 
+ #ifdef __cplusplus
+ }

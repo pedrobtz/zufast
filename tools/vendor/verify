@@ -76,7 +76,7 @@ done
 # 4. defines
 while IFS= read -r row; do split_list "$(field "$row" 9)"; done < "$TMP/rows" | LC_ALL=C sort > "$TMP/want-defines"
 sed -n '/BEGIN VENDOR DEFINES/,/END VENDOR DEFINES/p' "$CONFIG" |
-    sed -n 's/^#define[[:space:]]\{1,\}\([A-Za-z_][A-Za-z0-9_]*\)[[:space:]]*\(.*\)$/\1=\2/p' |
+    sed -n -E 's/^#define[[:space:]]+([A-Za-z_][A-Za-z0-9_]*(\([^)]*\))?)[[:space:]]*(.*)$/\1=\3/p' |
     sed 's/=$//' | LC_ALL=C sort > "$TMP/have-defines"
 if ! cmp -s "$TMP/want-defines" "$TMP/have-defines"; then
     err "vendor_config.h defines differ from the manifest:"

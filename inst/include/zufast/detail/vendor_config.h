@@ -16,7 +16,11 @@
 #define FFC_IMPL
 #define FFC_LINKAGE static
 #define FFC_LINKAGE_EXTERN static
+#define RYU_ASSERT(x) ((void)0)
 /* END VENDOR DEFINES */
+
+/* Ryu has no version macro; the pinned tag, as in the manifest. */
+#define ZUF_INT_RYU_VERSION "v2.0"
 
 /* The vendored headers are compiled with -Wpedantic and the unused-function
    and missing-initialiser warnings relaxed, and only inside them: GCC and

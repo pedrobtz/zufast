@@ -399,8 +399,8 @@ Consequences, stated so nobody rediscovers them:
 ### 9.1 Shortest round-trip
 
 ```c
-#define ZUF_F64_MAX_CHARS 24   /* "-1.7976931348623157e+308" */
-#define ZUF_F32_MAX_CHARS 16
+#define ZUF_F64_MAX_CHARS 25   /* "-0.000001234567890123456": 17 digits behind five zeros */
+#define ZUF_F32_MAX_CHARS 24   /* "-100000000000000000000.0": integral below 1e21, trailing zero */
 
 size_t zuf_format_f64(char *dst, size_t cap, double v);
 size_t zuf_format_f32(char *dst, size_t cap, float  v);
@@ -428,7 +428,17 @@ because R's `as.character()` prints fifteen significant digits, which is a diffe
 (§20).
 
 Non-finite values are written with R's spellings, `NaN`, `Inf`, `-Inf`. A JSON writer
-handles non-finite values before calling, as it must anyway.
+handles non-finite values before calling, as it must anyway. Negative zero is `-0`, so that
+the round-trip property holds bit for bit.
+
+The capacities were first drafted as 24 and 16 from the exponential form alone; the
+positional forms the notation rule allows are longer (`-0.000001234567890123456` is 25 bytes,
+and a float just below 1e21 with `ZUF_FMT_TRAILING_ZERO` is 24), so the macros are 25 and 24.
+
+Ryu's identifiers are generic (`mulShift`, `to_chars`, `uint128_t`, `DOUBLE_BIAS`) and its
+double and float units define functions of the same names with different types, so
+`detail/vendor_ryu.h` renames every one of them to `zuf_int_ryu_*` while including the two
+units and removes Ryu's macros afterwards; nothing of Ryu's namespace reaches a consumer.
 
 ### 9.2 Fixed notation
 
@@ -715,10 +725,10 @@ are applied by `fetch`, and each one is named in the manifest, in `inst/COPYRIGH
 |---|---|---|---|
 | Repository | `kolemannix/ffc.h` | `ulfjack/ryu` | `Cyan4973/xxHash` |
 | Pin | tag `v26.09.01` (2026-09-23), release asset `ffc.h` + `ffc.h.sha256` | tag `v2.0` | tag `v0.8.4` |
-| Files | `ffc.h` | `ryu/d2s.c`, `f2s.c`, `common.h`, `digit_table.h`, `d2s_intrinsics.h`, `d2s_full_table.h`, `f2s_intrinsics.h`, `f2s_full_table.h`, `ryu.h` | `xxhash.h` only |
+| Files | `ffc.h` | `ryu/d2s.c`, `f2s.c`, `common.h`, `digit_table.h`, `d2s.h`, `d2s_intrinsics.h`, `d2s_full_table.h`, `ryu.h` (the v2.0 file set) | `xxhash.h` only |
 | Licence chosen | MIT, of the MIT / Apache-2.0 / Boost triple | Boost Software License 1.0, of the Apache-2.0 / Boost pair | BSD-2-Clause (the library; the `xxhsum` tool in the same repository is GPL and is not vendored) |
 | Installed licence text | `licenses/ffc-LICENSE` | `licenses/ryu-LICENSE` | `licenses/xxhash-LICENSE` |
-| Patches | 0001: add `FFC_LINKAGE` and `FFC_LINKAGE_EXTERN` (defaults: empty and `extern`) in front of every public declaration and definition, so zufast can make them all `static`; 0002: drop the `-Wfloat-equal` pragmas, which R CMD check reports | 0001: `d2s.c` and `f2s.c` become `d2s.h` and `f2s.h`, their entry points `static inline`, their includes relative | none |
+| Patches | 0001: add `FFC_LINKAGE` and `FFC_LINKAGE_EXTERN` (defaults: empty and `extern`) in front of every public declaration and definition, so zufast can make them all `static`; 0002: drop the `-Wfloat-equal` pragmas, which R CMD check reports | 0001: `d2s.c` and `f2s.c` become `d2s_impl.h` and `f2s_impl.h`, their entry points `static inline`, their includes relative, `assert` routed through `RYU_ASSERT` | none |
 | Configuration | `FFC_IMPL` defined; `FFC_LINKAGE` = `FFC_LINKAGE_EXTERN` = `static`; `FFC_ROUNDS_TO_NEAREST` **not** defined | `RYU_OPTIMIZE_SIZE` not defined (full tables) | `XXH_INLINE_ALL`, `XXH_NO_STDLIB`; the vector path left to xxHash's compile-time choice |
 
 ### 18.1 ffc.h

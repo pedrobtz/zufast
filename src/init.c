@@ -17,6 +17,7 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_format_date, 1),
     CALLDEF(zufast_parse_double, 1),
     CALLDEF(zufast_parse_integer, 1),
+    CALLDEF(zufast_format_double, 2),
     CALLDEF(zufast_test_status_string, 1),
     CALLDEF(zufast_test_mul128, 2),
     CALLDEF(zufast_test_parse_bool, 2),
@@ -49,6 +50,10 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_test_write_ints, 0),
     CALLDEF(zufast_test_format_fixed, 3),
     CALLDEF(zufast_test_format_fixed_vec, 2),
+    CALLDEF(zufast_test_format_shortest, 4),
+    CALLDEF(zufast_test_format_f32_vec, 2),
+    CALLDEF(zufast_test_decimal_bits, 1),
+    CALLDEF(zufast_test_to_f32, 1),
     {NULL, NULL, 0}
 };
 
