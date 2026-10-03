@@ -728,7 +728,7 @@ are applied by `fetch`, and each one is named in the manifest, in `inst/COPYRIGH
 | Files | `ffc.h` | `ryu/d2s.c`, `f2s.c`, `common.h`, `digit_table.h`, `d2s.h`, `d2s_intrinsics.h`, `d2s_full_table.h`, `ryu.h` (the v2.0 file set) | `xxhash.h` only |
 | Licence chosen | MIT, of the MIT / Apache-2.0 / Boost triple | Boost Software License 1.0, of the Apache-2.0 / Boost pair | BSD-2-Clause (the library; the `xxhsum` tool in the same repository is GPL and is not vendored) |
 | Installed licence text | `licenses/ffc-LICENSE` | `licenses/ryu-LICENSE` | `licenses/xxhash-LICENSE` |
-| Patches | 0001: add `FFC_LINKAGE` and `FFC_LINKAGE_EXTERN` (defaults: empty and `extern`) in front of every public declaration and definition, so zufast can make them all `static`; 0002: drop the `-Wfloat-equal` pragmas, which R CMD check reports | 0001: `d2s.c` and `f2s.c` become `d2s_impl.h` and `f2s_impl.h`, their entry points `static inline`, their includes relative, `assert` routed through `RYU_ASSERT` | none |
+| Patches | 0001: add `FFC_LINKAGE` and `FFC_LINKAGE_EXTERN` (defaults: empty and `extern`) in front of every public declaration and definition, so zufast can make them all `static`; 0002: drop the `-Wfloat-equal` pragmas, which R CMD check reports; 0003: fix the u64 overflow check at the maximum digit count (a 20-digit value wrapped once passed it), ported from fast_float 8.3 | 0001: `d2s.c` and `f2s.c` become `d2s_impl.h` and `f2s_impl.h`, their entry points `static inline`, their includes relative, `assert` routed through `RYU_ASSERT` | none |
 | Configuration | `FFC_IMPL` defined; `FFC_LINKAGE` = `FFC_LINKAGE_EXTERN` = `static`; `FFC_ROUNDS_TO_NEAREST` **not** defined | `RYU_OPTIMIZE_SIZE` not defined (full tables) | `XXH_INLINE_ALL`, `XXH_NO_STDLIB`; the vector path left to xxHash's compile-time choice |
 
 ### 18.1 ffc.h
@@ -937,8 +937,13 @@ classes never on message text, and finish in under a minute.
 
 `hardening.yaml` compiles the headers into libFuzzer targets with ASan and UBSan, no R in
 the picture: `fuzz_number`, `fuzz_datetime`, `fuzz_uuid`, `fuzz_base64`, `fuzz_hex`,
-`fuzz_utf8`, each with a seed corpus and a canary that must crash. `native-checks.yaml`
-runs the package under UBSan, ASan, valgrind, LTO, gctorture and rchk through
+`fuzz_utf8`, `fuzz_hash`, each with a seed corpus and a canary that must crash.
+`fuzz_number` also checks the parsers against the C library: doubles against glibc's
+correctly rounded `strtod`, integers in every base against `strtoll`/`strtoull`.
+`fuzz_hash` checks the streaming hasher, fed in input-chosen chunks, against the one-shot
+digests. `native-checks.yaml` runs the package under UBSan, ASan, valgrind, LTO, gctorture
+and rchk; `arch.yaml` runs the suite on i386, musl and big-endian s390x; and
+`vendor-upstream.yaml` opens an issue when a vendored library releases. All through
 `pedrobtz/r-actions`, pinned by commit.
 
 ### 21.6 The consumer fixture

@@ -40,6 +40,16 @@ test_that("integers: every type, bases, saturation on overflow", {
   expect_identical(pn("-9223372036854775809", 2L), list(RANGE, 20L, "-9223372036854775808"))
   expect_identical(pn("18446744073709551615", 3L), list(OK, 20L, "18446744073709551615"))
   expect_identical(pn("18446744073709551616", 3L), list(RANGE, 20L, "18446744073709551615"))
+  # 20 digits that wrap around 2^64 and land above 1e19 again (found by the
+  # differential fuzzer; ffc patch 0003), and the same edge in other bases
+  for (s in c("28992250738585072010", "36893488147419103232", "99999999999999999999"))
+    expect_identical(pn(s, 3L), list(RANGE, 20L, "18446744073709551615"))
+  expect_identical(pn("19999999999999999999", 3L)[[1]], RANGE)
+  expect_identical(pn("10000000000000000000", 3L), list(OK, 20L, "10000000000000000000"))
+  expect_identical(pn("3w5e11264sgsf", 3L, base = 36L), list(OK, 13L, "18446744073709551615"))
+  expect_identical(pn("3w5e11264sgsg", 3L, base = 36L)[[1]], RANGE)
+  expect_identical(pn("zzzzzzzzzzzzz", 3L, base = 36L)[[1]], RANGE)
+  expect_identical(pn(strrep("2", 41L), 3L, base = 3L)[[1]], RANGE)
   expect_identical(pn("-1", 3L)[1:2], list(INVALID, 0L))
   expect_identical(pn("2147483648", 4L), list(RANGE, 10L, "2147483647"))
   expect_identical(pn("-2147483649", 4L), list(RANGE, 11L, "-2147483648"))

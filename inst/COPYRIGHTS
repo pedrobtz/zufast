@@ -28,7 +28,10 @@ include/zufast/vendor/ffc.h -- decimal number parsing and fixed formatting
     tools/patches/ffc/0001-add-linkage-macros.patch adds FFC_LINKAGE and
       FFC_LINKAGE_EXTERN so that every public function can be made static;
     tools/patches/ffc/0002-drop-float-equal-pragmas.patch removes the
-      pragmas that silence -Wfloat-equal, which R CMD check reports.
+      pragmas that silence -Wfloat-equal, which R CMD check reports;
+    tools/patches/ffc/0003-u64-overflow-at-max-digits.patch rejects
+      unsigned 64-bit integers that wrap around 2^64 more than once, as
+      fast_float 8.3 does.
 
 ------------------------------------------------------------------------------
 include/zufast/vendor/ryu/ -- shortest round-trip digits of double and float
