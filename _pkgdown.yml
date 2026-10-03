@@ -23,6 +23,10 @@ reference:
       - zufast-package
 
 articles:
+  - title: Using zufast from R
+    navbar: ~
+    contents:
+      - articles/r-api
   - title: Using zufast from C
     contents:
       - linking
