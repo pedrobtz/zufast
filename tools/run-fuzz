@@ -1,0 +1,41 @@
+#!/bin/sh
+# Design 21.5: build each libFuzzer target in tools/fuzz with ASan and UBSan,
+# check that its canary build crashes on tools/fuzz/canary.input, then fuzz
+# it for SECONDS (default 30) from its seed corpus. Needs clang with
+# libFuzzer. Run from the package root.
+#
+#   tools/run-fuzz [target ...]     targets: number datetime uuid base64 hex utf8
+set -eu
+
+CC=${CC:-clang}
+SECONDS_PER_TARGET=${SECONDS:-30}
+TARGETS=${*:-number datetime uuid base64 hex utf8}
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+FLAGS="-g -O1 -fno-omit-frame-pointer -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -Iinst/include"
+
+status=0
+for t in $TARGETS; do
+    src=tools/fuzz/fuzz_$t.c
+    $CC $FLAGS -DZUF_FUZZ_CANARY "$src" tools/fuzz/support.c -o "$TMP/canary_$t"
+    if "$TMP/canary_$t" tools/fuzz/canary.input >"$TMP/canary_$t.log" 2>&1; then
+        echo "FAIL $t: the canary build did not crash on the canary input"
+        status=1
+        continue
+    fi
+    grep -q 'AddressSanitizer' "$TMP/canary_$t.log" || { echo "FAIL $t: the canary crash was not ASan's"; status=1; continue; }
+    echo "ok $t: canary crashed under ASan"
+
+    $CC $FLAGS "$src" tools/fuzz/support.c -o "$TMP/fuzz_$t"
+    mkdir -p "$TMP/corpus_$t"
+    cp tools/fuzz/seeds/$t/* "$TMP/corpus_$t/"
+    if "$TMP/fuzz_$t" -max_total_time="$SECONDS_PER_TARGET" -print_final_stats=1 \
+            -artifact_prefix="$TMP/" "$TMP/corpus_$t" >"$TMP/fuzz_$t.log" 2>&1; then
+        echo "ok $t: $(grep -o 'stat::number_of_executed_units: *[0-9]*' "$TMP/fuzz_$t.log" | grep -o '[0-9]*$') executions, no finding"
+    else
+        echo "FAIL $t: finding"
+        tail -40 "$TMP/fuzz_$t.log"
+        status=1
+    fi
+done
+exit $status

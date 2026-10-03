@@ -1,0 +1,47 @@
+# Design 21.5: the headers compiled into libFuzzer targets with ASan and
+# UBSan, no R in the picture. Each target's canary build must crash on
+# tools/fuzz/canary.input, which proves the instrumentation is live; then
+# each target fuzzes from its seed corpus, briefly on pull requests and for
+# longer on the weekly schedule. The corpus is cached between runs.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: "41 3 * * 0"
+  workflow_dispatch:
+
+name: hardening
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  canaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install clang with libFuzzer
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang
+          v=$(clang -dumpversion | cut -d. -f1)
+          sudo apt-get install -y -q "libclang-rt-$v-dev" || true
+      - name: Every canary crashes; every target survives a short run
+        run: SECONDS=10 tools/run-fuzz
+
+  fuzz:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [number, datetime, uuid, base64, hex, utf8]
+    uses: pedrobtz/r-actions/.github/workflows/fuzz.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    with:
+      harness: tools/fuzz/fuzz_${{ matrix.target }}.c
+      sources: tools/fuzz/support.c
+      cflags: -g -O1 -fno-omit-frame-pointer -Iinst/include
+      seed-corpus: tools/fuzz/seeds/${{ matrix.target }}
+      max-total-time: ${{ github.event_name == 'schedule' && 900 || 60 }}
