@@ -140,7 +140,13 @@ test_that("fixed formatting matches sprintf() on glibc and follows the formatter
                    c("0.12", "0.38", "2.50", "-0.00", "10000000000000000000000.00", "0.00"))
   expect_identical(fx(c(NaN, Inf, -Inf, NA), 3L), c("NaN", "Inf", "-Inf", "NaN"))
   expect_identical(fx(0.1, -1L), "0.100000")
-  expect_identical(fx(.Machine$double.xmax, 0L), sprintf("%.0f", .Machine$double.xmax))
+  # the exact value; not sprintf(), which is inexact on Windows
+  expect_identical(fx(.Machine$double.xmax, 0L),
+                   paste0("17976931348623157081452742373170435679807056752584499659891747680315",
+                          "72607800285387605895586327668781715404589535143824642343213268894641",
+                          "82768467546703537516986049910576551282076245490090389328944075868508",
+                          "45513394230458323690322294816580855933212334827479782620414472316873",
+                          "8177180919299881250404026184124858368"))
   expect_identical(nchar(fx(-.Machine$double.xmax, 2L)), 311L + 2L)   # the 311 + places bound
   r <- .Call(zufast_test_format_fixed, 3.25, 1L, 0)
   expect_identical(r[[1]], 3)
