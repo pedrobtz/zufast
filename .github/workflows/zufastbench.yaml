@@ -1,0 +1,44 @@
+# tools/zufastbench: the zufast headers compiled as C++ next to RcppFastFloat's
+# fast_float, its agreement tests, and RcppFastFloat's benchmark with zufast
+# added. Not a pull-request gate: it depends on Rcpp and RcppFastFloat from
+# CRAN, and timings on shared runners are for reading, not for gating.
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+name: zufastbench
+
+permissions: read-all
+
+jobs:
+  compare:
+    name: compare (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"hard"'
+          extra-packages: any::Rcpp, any::RcppFastFloat, any::microbenchmark, any::testthat
+
+      - name: Install zufast, then zufastbench
+        run: |
+          R CMD INSTALL .
+          R CMD INSTALL tools/zufastbench
+
+      - name: zufast and fast_float agree
+        working-directory: tools/zufastbench/tests
+        run: Rscript testthat.R
+
+      - name: RcppFastFloat's benchmark, with zufast added
+        run: Rscript tools/zufastbench/inst/benchmark/comparison.R

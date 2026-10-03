@@ -1,0 +1,4 @@
+useDynLib(zufastbench, .registration = TRUE)
+importFrom(Rcpp, evalCpp)
+export(zufast, fastfloat, strtod, atof, sscanf, stod)
+export(zufast_spans, fastfloat_spans)

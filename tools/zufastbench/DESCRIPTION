@@ -1,0 +1,15 @@
+Package: zufastbench
+Title: Compare 'zufast' Number Parsing with 'RcppFastFloat'
+Version: 0.0.1
+Authors@R: person("Pedro", "Z", , "pedrobtz@gmail.com", role = c("aut", "cre"))
+Description: A tools-only package, not for release. It compiles the 'zufast'
+    headers into C++ next to the 'fast_float' headers that 'RcppFastFloat'
+    ships, and runs both, and the C library's parsers, through the same
+    harness: the benchmark of 'RcppFastFloat' (inst/benchmark/comparison.R)
+    with 'zufast' added. Its tests check that the parsers agree.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LinkingTo: zufast, Rcpp, RcppFastFloat
+Imports: Rcpp
+Suggests: testthat (>= 3.0.0), microbenchmark
+Config/testthat/edition: 3
