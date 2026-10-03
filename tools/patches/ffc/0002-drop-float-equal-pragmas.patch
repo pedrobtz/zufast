@@ -1,0 +1,38 @@
+Drop the pragmas that silence -Wfloat-equal around the rounding-mode
+check in ffc_rounds_to_nearest().
+
+R CMD check reports any pragma that suppresses -Wfloat-equal as a
+WARNING, and the warning is not enabled by -Wall or -Wextra, so the
+pragmas protect nothing in a default build.
+
+Upstream: to be submitted to kolemannix/ffc.h.
+
+--- a/ffc.h
++++ b/ffc.h
+@@ -927,26 +927,7 @@
+ //
+ // Note: This may fail to be accurate if fast-math has been
+ // enabled, as rounding conventions may not apply.
+-#ifdef FFC_VISUAL_STUDIO
+-#pragma warning(push)
+-//  todo: is there a VS warning?
+-//  see
+-//  https://stackoverflow.com/questions/46079446/is-there-a-warning-for-floating-point-equality-checking-in-visual-studio-2013
+-#elif defined(__clang__)
+-#pragma clang diagnostic push
+-#pragma clang diagnostic ignored "-Wfloat-equal"
+-#elif defined(__GNUC__)
+-#pragma GCC diagnostic push
+-#pragma GCC diagnostic ignored "-Wfloat-equal"
+-#endif
+   return (fmini + 1.0f == 1.0f - fmini);
+-#ifdef FFC_VISUAL_STUDIO
+-#pragma warning(pop)
+-#elif defined(__clang__)
+-#pragma clang diagnostic pop
+-#elif defined(__GNUC__)
+-#pragma GCC diagnostic pop
+-#endif
+ }
+ 
+ ffc_internal ffc_inline

@@ -1,0 +1,90 @@
+#!/bin/sh
+# Offline verification of the vendor tree (design 18, 21.7):
+#   1. every file in the vendor tree matches checksums.sha256, and nothing
+#      is unlisted or missing;
+#   2. reverse-applying each source's patches gives back exactly the
+#      upstream files of archive_sha256;
+#   3. the patch files on disk are exactly those the manifest names, and
+#      each is named in inst/COPYRIGHTS and cran-comments.md;
+#   4. the vendor defines in detail/vendor_config.h are exactly the
+#      manifest's defines columns.
+. "$(dirname "$0")/common.sh"
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+fail=0
+err() { echo "FAIL: $*"; fail=1; }
+
+# 1. checksums
+(cd "$VENDOR" && find . -type f | sed 's|^\./||' | LC_ALL=C sort) > "$TMP/tree"
+cut -c67- "$CHECKSUMS" | LC_ALL=C sort > "$TMP/listed"
+if ! cmp -s "$TMP/tree" "$TMP/listed"; then
+    err "vendor tree and checksums.sha256 list different files:"
+    diff "$TMP/listed" "$TMP/tree" | sed 's/^/    /' || true
+fi
+while read -r sum path; do
+    [ -f "$VENDOR/$path" ] || continue
+    [ "$(sha256 "$VENDOR/$path")" = "$sum" ] || err "checksum mismatch: $path"
+done < "$CHECKSUMS"
+
+# 2. upstream identity
+manifest_rows > "$TMP/rows"
+while IFS= read -r row; do
+    src=$(field "$row" 1)
+    work="$TMP/up-$src"
+    mkdir -p "$work"
+    split_list "$(field "$row" 6)" > "$TMP/pairs"
+    while IFS= read -r pair; do
+        dest=${pair#*:}
+        mkdir -p "$(dirname "$work/$dest")"
+        cp "$VENDOR/$dest" "$work/$dest" 2>/dev/null || err "$src: missing $dest"
+    done < "$TMP/pairs"
+    split_list "$(field "$row" 10)" | sed '1!G;h;$!d' > "$TMP/rpatches"   # reverse order
+    while IFS= read -r p; do
+        patch -s -R -p1 -d "$work" < "$PATCHES/$src/$p" || err "$src: $p does not reverse-apply"
+    done < "$TMP/rpatches"
+    split_list "$(field "$row" 7)" > "$TMP/hashes"
+    i=0
+    while IFS= read -r pair; do
+        i=$((i + 1))
+        dest=${pair#*:}
+        want=$(sed -n "${i}p" "$TMP/hashes")
+        [ -f "$work/$dest" ] || continue
+        got=$(sha256 "$work/$dest")
+        [ "$got" = "$want" ] || err "$src: $dest unpatched is $got, manifest has $want"
+    done < "$TMP/pairs"
+
+    # 3. patch set
+    split_list "$(field "$row" 10)" | LC_ALL=C sort > "$TMP/named"
+    if [ -d "$PATCHES/$src" ]; then
+        (cd "$PATCHES/$src" && ls | LC_ALL=C sort) > "$TMP/ondisk"
+    else
+        : > "$TMP/ondisk"
+    fi
+    cmp -s "$TMP/named" "$TMP/ondisk" || err "$src: patches on disk differ from the manifest"
+    while IFS= read -r p; do
+        grep -q "$p" "$ROOT/inst/COPYRIGHTS" || err "$src: $p not named in inst/COPYRIGHTS"
+        grep -q "$p" "$ROOT/cran-comments.md" || err "$src: $p not named in cran-comments.md"
+    done < "$TMP/named"
+done < "$TMP/rows"
+for d in "$PATCHES"/*; do
+    [ -d "$d" ] || continue
+    s=$(basename "$d")
+    cut -f1 "$TMP/rows" | grep -qx "$s" || err "tools/patches/$s has no manifest row"
+done
+
+# 4. defines
+while IFS= read -r row; do split_list "$(field "$row" 9)"; done < "$TMP/rows" | LC_ALL=C sort > "$TMP/want-defines"
+sed -n '/BEGIN VENDOR DEFINES/,/END VENDOR DEFINES/p' "$CONFIG" |
+    sed -n 's/^#define[[:space:]]\{1,\}\([A-Za-z_][A-Za-z0-9_]*\)[[:space:]]*\(.*\)$/\1=\2/p' |
+    sed 's/=$//' | LC_ALL=C sort > "$TMP/have-defines"
+if ! cmp -s "$TMP/want-defines" "$TMP/have-defines"; then
+    err "vendor_config.h defines differ from the manifest:"
+    diff "$TMP/want-defines" "$TMP/have-defines" | sed 's/^/    /' || true
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo "vendor verification FAILED"
+    exit 1
+fi
+echo "vendor verification passed ($(wc -l < "$TMP/rows" | tr -d ' ') sources)"

@@ -1,0 +1,18 @@
+# Design 21.4: the parse-number-fxx-test-data corpus against zuf_parse_f32 and
+# zuf_parse_f64, weekly and on demand; too large for the test suite.
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+name: parse-corpus
+
+permissions: read-all
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run the corpus
+        run: tools/run-parse-corpus

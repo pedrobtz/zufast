@@ -12,3 +12,20 @@ include/zufast/utf8.h -- UTF-8 decoder state table
 
   Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
   Licence: MIT. The full notice is reproduced in the header.
+
+------------------------------------------------------------------------------
+include/zufast/vendor/ffc.h -- decimal number parsing and fixed formatting
+
+  ffc.h, a C port of fast_float, https://github.com/kolemannix/ffc.h
+  Pinned at tag v26.09.01 (commit 965d4db45d03365b4c852ab34f4d5b08b53bc7b3).
+
+  Copyright (c) 2021 The fast_float authors (Daniel Lemire, Joao Paulo
+  Magalhaes and contributors); C port by Koleman Nix.
+  Licence: MIT, chosen from the MIT / Apache-2.0 / Boost-1.0 options.
+  Licence text: licenses/ffc-LICENSE.
+
+  Patched:
+    tools/patches/ffc/0001-add-linkage-macros.patch adds FFC_LINKAGE and
+      FFC_LINKAGE_EXTERN so that every public function can be made static;
+    tools/patches/ffc/0002-drop-float-equal-pragmas.patch removes the
+      pragmas that silence -Wfloat-equal, which R CMD check reports.

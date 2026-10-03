@@ -16,6 +16,8 @@ SEXP zufast_parse_datetime(SEXP x);
 SEXP zufast_datetime_fields(SEXP x);
 SEXP zufast_format_datetime(SEXP x, SEXP digits);
 SEXP zufast_format_date(SEXP x);
+SEXP zufast_parse_double(SEXP x);
+SEXP zufast_parse_integer(SEXP x);
 
 /* zufast_test.c */
 SEXP zufast_test_status_string(SEXP status);
@@ -44,5 +46,11 @@ SEXP zufast_test_civil_from_days(SEXP days);
 SEXP zufast_test_days_from_civil(SEXP y, SEXP m, SEXP d);
 SEXP zufast_test_year_info(SEXP year);
 SEXP zufast_test_calendar_walk(SEXP lo, SEXP hi, SEXP step);
+SEXP zufast_test_parse_num(SEXP raw, SEXP kind, SEXP flags, SEXP base, SEXP decimal_point);
+SEXP zufast_test_parse_vs_strtod(SEXP x);
+SEXP zufast_test_write_i32(SEXP x);
+SEXP zufast_test_write_ints(void);
+SEXP zufast_test_format_fixed(SEXP x, SEXP places, SEXP cap);
+SEXP zufast_test_format_fixed_vec(SEXP x, SEXP places);
 
 #endif
