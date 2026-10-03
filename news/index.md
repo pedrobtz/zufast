@@ -39,3 +39,9 @@
   [`fast_parse_integer()`](https://pedrobtz.github.io/zufast/reference/fast_parse_double.md).
 - Vendoring tooling: `tools/vendor/{fetch,record,verify}`, the manifest
   and checksums, and `tools/run-parse-corpus`.
+- Shortest round-trip formatting of `double` and `float` through the
+  vendored Ryu (v2.0) in ECMAScript `Number::toString` notation:
+  `zuf_format_f64()`, `zuf_format_f32()`, the `_opt` variants with
+  `ZUF_FMT_SCIENTIFIC` and `ZUF_FMT_TRAILING_ZERO`, `zuf_decimal_f64()`,
+  `zuf_decimal_f32()`;
+  [`fast_format_double()`](https://pedrobtz.github.io/zufast/reference/fast_format_double.md).

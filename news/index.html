@@ -50,6 +50,7 @@
 <li>
 <code>zufast/number.h</code>: correctly rounded parsing of <code>double</code>, <code>float</code> and 32/64-bit integers in any base 2 to 36 through the vendored <code>ffc.h</code> (v26.09.01), with JSON, leading-plus, whitespace and decimal-point options; exact fixed-notation formatting; integer writers. <code><a href="../reference/fast_parse_double.html">fast_parse_double()</a></code> and <code><a href="../reference/fast_parse_double.html">fast_parse_integer()</a></code>.</li>
 <li>Vendoring tooling: <code>tools/vendor/{fetch,record,verify}</code>, the manifest and checksums, and <code>tools/run-parse-corpus</code>.</li>
+<li>Shortest round-trip formatting of <code>double</code> and <code>float</code> through the vendored Ryu (v2.0) in ECMAScript <code>Number::toString</code> notation: <code>zuf_format_f64()</code>, <code>zuf_format_f32()</code>, the <code>_opt</code> variants with <code>ZUF_FMT_SCIENTIFIC</code> and <code>ZUF_FMT_TRAILING_ZERO</code>, <code>zuf_decimal_f64()</code>, <code>zuf_decimal_f32()</code>; <code><a href="../reference/fast_format_double.html">fast_format_double()</a></code>.</li>
 </ul></div>
   </main></div>
 

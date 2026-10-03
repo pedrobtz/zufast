@@ -7,6 +7,8 @@
   : Base64 encoding and decoding
 - [`fast_format_datetime()`](https://pedrobtz.github.io/zufast/reference/fast_format_datetime.md)
   : Format dates and timestamps as RFC 3339
+- [`fast_format_double()`](https://pedrobtz.github.io/zufast/reference/fast_format_double.md)
+  : Format doubles with the shortest round-trip digits
 - [`fast_hex_encode()`](https://pedrobtz.github.io/zufast/reference/fast_hex_encode.md)
   [`fast_hex_decode()`](https://pedrobtz.github.io/zufast/reference/fast_hex_encode.md)
   : Hexadecimal encoding and decoding

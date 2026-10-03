@@ -33,7 +33,7 @@ A character vector, `NA` where `x` is `NA` or not finite.
 fast_format_datetime(as.POSIXct("2024-03-01 12:30:00.25", tz = "UTC"))
 #> [1] "2024-03-01T12:30:00.250Z"
 fast_format_datetime(Sys.time(), digits = 0)
-#> [1] "2026-10-03T15:41:32Z"
+#> [1] "2026-10-03T15:50:35Z"
 fast_format_datetime(as.Date("2024-03-01"))
 #> [1] "2024-03-01"
 ```
