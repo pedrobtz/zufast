@@ -1,14 +1,74 @@
 #!/bin/sh
-# Design 22: run tools/benchmarks.R against the installed zufast, installing
-# the comparison packages into a temporary library if they are missing.
-# Run from the package root; append the output to .agents/benchmarks.md
-# together with the commit it was taken at.
+# Design 22: run the benchmarks against a release build of zufast.
+#
+#   tools/run-benchmarks            tools/benchmarks.R, then
+#                                   tools/zufastbench/inst/benchmark/comparison.R
+#
+# zufast and tools/zufastbench are built into tarballs and installed from them
+# into a fresh library, so no object file left in src/ by devtools (which
+# compiles with -O0 -UNDEBUG) can reach the shared objects being measured; the
+# script then refuses to run unless they were compiled optimised and with
+# NDEBUG. The comparison packages are installed into BENCH_LIB (a temporary
+# directory by default) when missing. Run from the package root; record the
+# output in .agents/benchmarks.md with the commit it was taken at.
 set -eu
-LIB=${BENCH_LIB:-$(mktemp -d)}
-R_LIBS="$LIB${R_LIBS:+:$R_LIBS}" R_PROFILE=/dev/null Rscript -e "
-  need <- c('bench', 'RcppFastFloat', 'fasttime', 'clock', 'digest', 'base64enc', 'jsonlite')
+
+ROOT=$(pwd)
+DEPS=${BENCH_LIB:-$(mktemp -d)}
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+LIB="$WORK/lib"
+mkdir -p "$LIB"
+export R_LIBS="$LIB:$DEPS${R_LIBS:+:$R_LIBS}"
+
+R_PROFILE=/dev/null Rscript -e "
+  need <- c('bench', 'microbenchmark', 'Rcpp', 'RcppFastFloat', 'fasttime', 'clock',
+            'digest', 'base64enc', 'jsonlite')
   miss <- need[!vapply(need, requireNamespace, NA, quietly = TRUE)]
-  if (length(miss)) install.packages(miss, lib = '$LIB', repos = 'https://cloud.r-project.org')
+  if (length(miss)) install.packages(miss, lib = '$DEPS', repos = 'https://cloud.r-project.org')
 "
+
+# Release builds, from tarballs.
+(cd "$WORK" && R CMD build --no-build-vignettes --no-manual "$ROOT" >build.log 2>&1 &&
+    R CMD build "$ROOT/tools/zufastbench" >>build.log 2>&1) || { cat "$WORK/build.log"; exit 1; }
+for tarball in "$WORK"/zufast_*.tar.gz "$WORK"/zufastbench_*.tar.gz; do
+    R CMD INSTALL --preclean --library="$LIB" "$tarball" >"$WORK/install.log" 2>&1 ||
+        { cat "$WORK/install.log"; exit 1; }
+done
+
+# Refuse a debug build: every compilation unit must be optimised (-O1 or
+# higher) and compiled with NDEBUG. Needs DWARF producer strings (R's default
+# -g provides them) and readelf or dwarfdump; skipped, loudly, without them.
+check_optimised() {
+    so=$1
+    if command -v readelf >/dev/null 2>&1; then
+        producers=$(readelf --debug-dump=info "$so" 2>/dev/null | grep DW_AT_producer || true)
+    elif command -v dwarfdump >/dev/null 2>&1; then
+        producers=$(dwarfdump --debug-info "$so" 2>/dev/null | grep DW_AT_producer || true)
+    else
+        echo "warning: cannot verify optimisation of $so (no readelf or dwarfdump)"
+        return 0
+    fi
+    if [ -z "$producers" ]; then
+        echo "warning: $so has no DWARF producer strings; optimisation not verified"
+        return 0
+    fi
+    if printf '%s\n' "$producers" | grep -qE -- '-O0( |"|$)|-UNDEBUG'; then
+        echo "refusing to benchmark: $so was compiled with -O0 or -UNDEBUG:"
+        printf '%s\n' "$producers" | grep -oE -- '-O[0-9sz]|-UNDEBUG' | sort | uniq -c
+        exit 1
+    fi
+    echo "release build: $(basename "$so") ($(printf '%s\n' "$producers" | grep -oE -- '-O[1-3sz]' | sort -u | tr '\n' ' '))"
+}
+for pkg in zufast zufastbench; do
+    for so in "$LIB/$pkg"/libs/*.so "$LIB/$pkg"/libs/*/*.dll; do
+        [ -f "$so" ] && check_optimised "$so"
+    done
+done
+
 echo "commit $(git rev-parse --short HEAD)"
-R_LIBS="$LIB${R_LIBS:+:$R_LIBS}" Rscript tools/benchmarks.R
+Rscript tools/benchmarks.R
+echo
+echo "## RcppFastFloat's benchmark, with zufast added"
+echo
+Rscript tools/zufastbench/inst/benchmark/comparison.R
