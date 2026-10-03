@@ -34,6 +34,8 @@ library(zufast)
   : Format dates and timestamps as RFC 3339
 - [`fast_format_double()`](https://pedrobtz.github.io/zufast/reference/fast_format_double.md)
   : Format doubles with the shortest round-trip digits
+- [`fast_hash()`](https://pedrobtz.github.io/zufast/reference/fast_hash.md)
+  : XXH3 hashes
 - [`fast_hex_encode()`](https://pedrobtz.github.io/zufast/reference/fast_hex_encode.md)
   [`fast_hex_decode()`](https://pedrobtz.github.io/zufast/reference/fast_hex_encode.md)
   : Hexadecimal encoding and decoding

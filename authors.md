@@ -7,6 +7,18 @@
 - **Bjoern Hoehrmann**. Copyright holder.  
   UTF-8 decoder state table in inst/include/zufast/utf8.h
 
+- **The fast_float authors**. Copyright holder.  
+  fast_float, ported to C as ffc.h
+
+- **Koleman Nix**. Copyright holder.  
+  ffc.h, the C port of fast_float
+
+- **Ulf Adams**. Copyright holder.  
+  Ryu
+
+- **Yann Collet**. Copyright holder.  
+  xxHash
+
 ## Citation
 
 Source:
