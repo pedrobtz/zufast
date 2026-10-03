@@ -22,3 +22,11 @@
   [`fast_base64_encode()`](https://pedrobtz.github.io/zufast/reference/fast_base64_encode.md)
   and
   [`fast_base64_decode()`](https://pedrobtz.github.io/zufast/reference/fast_base64_encode.md).
+- `zufast/datetime.h`: ISO 8601 / RFC 3339 date and timestamp parsing to
+  fields, Neri-Schneider calendar arithmetic exact over the whole
+  `int32_t` day range, and RFC 3339 formatting;
+  [`fast_parse_date()`](https://pedrobtz.github.io/zufast/reference/fast_parse_date.md),
+  [`fast_parse_datetime()`](https://pedrobtz.github.io/zufast/reference/fast_parse_date.md),
+  [`fast_datetime_fields()`](https://pedrobtz.github.io/zufast/reference/fast_parse_date.md)
+  and
+  [`fast_format_datetime()`](https://pedrobtz.github.io/zufast/reference/fast_format_datetime.md).
