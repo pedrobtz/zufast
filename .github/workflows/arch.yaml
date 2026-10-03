@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   arch:
-    uses: pedrobtz/r-actions/.github/workflows/arch.yml@b68be89f8389a3aed195a65a3423e206bd7a4528
+    uses: pedrobtz/r-actions/.github/workflows/arch.yml@2fe045f1754cca74f7488d7400d9201dae9c426d
     with:
       error-on: warning
       require-tests: true
