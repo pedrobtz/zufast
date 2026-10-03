@@ -507,3 +507,165 @@ SEXP zufast_test_calendar_walk(SEXP lo, SEXP hi, SEXP step)
     }
     return Rf_ScalarReal(bad);
 }
+
+/* ---- number.h ----------------------------------------------------------- */
+
+#include <stdlib.h>
+
+/* list(status, consumed, value): kind 0 f64, 1 f32 (value a double), 2 i64,
+   3 u64, 4 i32, 5 u32 (value a decimal string written by zuf_write_*). The
+   value is reported for ZUF_OK and ZUF_ERR_RANGE. */
+SEXP zufast_test_parse_num(SEXP raw, SEXP kind, SEXP flags, SEXP base, SEXP decimal_point)
+{
+    const char *s = (const char *)RAW(raw), *e = s + XLENGTH(raw);
+    zuf_num_options opt;
+    zuf_result r;
+    char buf[32];
+    SEXP val = R_NilValue, out;
+    int k = Rf_asInteger(kind);
+    opt.flags = (uint32_t)Rf_asInteger(flags);
+    opt.base = Rf_asInteger(base);
+    opt.decimal_point = (char)Rf_asInteger(decimal_point);
+    switch (k) {
+    case 0: { double v = -1; r = zuf_parse_f64_opt(s, e, &v, &opt); val = Rf_ScalarReal(v); break; }
+    case 1: { float v = -1; r = zuf_parse_f32_opt(s, e, &v, &opt); val = Rf_ScalarReal((double)v); break; }
+    case 2: { int64_t v = -1; r = zuf_parse_i64_opt(s, e, &v, &opt); *zuf_write_i64(buf, v) = 0; val = Rf_mkString(buf); break; }
+    case 3: { uint64_t v = 1; r = zuf_parse_u64_opt(s, e, &v, &opt); *zuf_write_u64(buf, v) = 0; val = Rf_mkString(buf); break; }
+    case 4: { int32_t v = -1; r = zuf_parse_i32_opt(s, e, &v, &opt); *zuf_write_i32(buf, v) = 0; val = Rf_mkString(buf); break; }
+    default: { uint32_t v = 1; r = zuf_parse_u32_opt(s, e, &v, &opt); *zuf_write_u32(buf, v) = 0; val = Rf_mkString(buf); break; }
+    }
+    PROTECT(val);
+    out = PROTECT(Rf_allocVector(VECSXP, 3));
+    SET_VECTOR_ELT(out, 0, Rf_ScalarInteger((int)r.status));
+    SET_VECTOR_ELT(out, 1, Rf_ScalarInteger((int)(r.ptr - s)));
+    if (r.status == ZUF_OK || r.status == ZUF_ERR_RANGE) SET_VECTOR_ELT(out, 2, val);
+    UNPROTECT(2);
+    return out;
+}
+
+/* The default zuf_parse_f64 / zuf_parse_f32 over a character vector, and
+   the C library's strtod / strtof on the same strings, side by side: a
+   4-column matrix (zuf f64, strtod, zuf f32, strtof). NA where a parser did
+   not consume the whole string. R runs with LC_NUMERIC = "C". */
+SEXP zufast_test_parse_vs_strtod(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocMatrix(REALSXP, (int)n, 4));
+    double *o = REAL(out);
+    for (i = 0; i < n; i++) {
+        SEXP s = STRING_ELT(x, i);
+        const char *first = CHAR(s), *last = first + LENGTH(s);
+        char *end;
+        double d;
+        float f;
+        zuf_result r = zuf_parse_f64(first, last, &d);
+        o[i] = (r.status != ZUF_ERR_INVALID && r.ptr == last) ? d : NA_REAL;
+        d = strtod(first, &end);
+        o[i + n] = end == last ? d : NA_REAL;
+        r = zuf_parse_f32(first, last, &f);
+        o[i + 2 * n] = (r.status != ZUF_ERR_INVALID && r.ptr == last) ? (double)f : NA_REAL;
+        f = strtof(first, &end);
+        o[i + 3 * n] = end == last ? (double)f : NA_REAL;
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* zuf_write_i32 for an integer vector. */
+SEXP zufast_test_write_i32(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        char buf[ZUF_I32_MAX_CHARS + 1];
+        char *e = zuf_write_i32(buf, INTEGER(x)[i]);
+        SET_STRING_ELT(out, i, Rf_mkCharLen(buf, (int)(e - buf)));
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* Write every value 2^k - 1, 2^k, 10^k - 1, 10^k and their negatives with
+   the 64-bit and 32-bit writers, and compare each with a naive reference.
+   Returns the number of mismatches. */
+static size_t naive_u64(char *dst, uint64_t v)
+{
+    char tmp[24];
+    size_t n = 0, i;
+    do { tmp[n++] = (char)('0' + v % 10); v /= 10; } while (v);
+    for (i = 0; i < n; i++) dst[i] = tmp[n - 1 - i];
+    return n;
+}
+
+SEXP zufast_test_write_ints(void)
+{
+    double bad = 0;
+    int k, d;
+    uint64_t vals[4 * 64 + 8];
+    size_t nv = 0, i;
+    uint64_t p10 = 1;
+    for (k = 0; k < 64; k++) {
+        vals[nv++] = (UINT64_C(1) << k);
+        vals[nv++] = (UINT64_C(1) << k) - 1;
+    }
+    for (k = 0; k < 20; k++) {
+        vals[nv++] = p10;
+        vals[nv++] = p10 - 1;
+        if (k < 19) p10 *= 10;
+    }
+    vals[nv++] = UINT64_MAX;
+    vals[nv++] = UINT64_MAX - 1;
+    for (i = 0; i < nv; i++) {
+        for (d = -1; d <= 1; d++) {
+            uint64_t v = vals[i] + (uint64_t)(int64_t)d;
+            char a[32], b[32];
+            size_t la, lb;
+            la = (size_t)(zuf_write_u64(a, v) - a);
+            lb = naive_u64(b, v);
+            bad += la != lb || memcmp(a, b, la) != 0;
+            {   /* as int64, both signs */
+                int64_t sv = (int64_t)v;
+                la = (size_t)(zuf_write_i64(a, sv) - a);
+                if (sv < 0) { b[0] = '-'; lb = 1 + naive_u64(b + 1, 0u - (uint64_t)sv); }
+                else lb = naive_u64(b, (uint64_t)sv);
+                bad += la != lb || memcmp(a, b, la) != 0 || la > ZUF_I64_MAX_CHARS;
+            }
+            {
+                uint32_t u = (uint32_t)v;
+                int32_t s = (int32_t)u;
+                la = (size_t)(zuf_write_u32(a, u) - a);
+                lb = naive_u64(b, u);
+                bad += la != lb || memcmp(a, b, la) != 0 || la > ZUF_U32_MAX_CHARS;
+                la = (size_t)(zuf_write_i32(a, s) - a);
+                if (s < 0) { b[0] = '-'; lb = 1 + naive_u64(b + 1, (uint64_t)(-(int64_t)s)); }
+                else lb = naive_u64(b, (uint64_t)s);
+                bad += la != lb || memcmp(a, b, la) != 0 || la > ZUF_I32_MAX_CHARS;
+            }
+        }
+    }
+    return Rf_ScalarReal(bad);
+}
+
+SEXP zufast_test_format_fixed(SEXP x, SEXP places, SEXP cap)
+{
+    size_t c = (size_t)Rf_asReal(cap);
+    unsigned char *buf = sentinel_buffer(c);
+    size_t r = zuf_format_f64_fixed((char *)buf, c, Rf_asReal(x), Rf_asInteger(places));
+    return encode_result(r, buf, c);
+}
+
+/* zuf_format_f64_fixed for a vector, at the needed size. */
+SEXP zufast_test_format_fixed_vec(SEXP x, SEXP places)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    int p = Rf_asInteger(places);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        size_t len = zuf_format_f64_fixed(NULL, 0, REAL(x)[i], p);
+        char *buf = R_alloc(len, 1);
+        zuf_format_f64_fixed(buf, len, REAL(x)[i], p);
+        SET_STRING_ELT(out, i, Rf_mkCharLen(buf, (int)len));
+    }
+    UNPROTECT(1);
+    return out;
+}

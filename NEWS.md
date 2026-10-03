@@ -18,3 +18,10 @@
   day range, and RFC 3339 formatting; `fast_parse_date()`,
   `fast_parse_datetime()`, `fast_datetime_fields()` and
   `fast_format_datetime()`.
+* `zufast/number.h`: correctly rounded parsing of `double`, `float` and
+  32/64-bit integers in any base 2 to 36 through the vendored `ffc.h`
+  (v26.09.01), with JSON, leading-plus, whitespace and decimal-point
+  options; exact fixed-notation formatting; integer writers.
+  `fast_parse_double()` and `fast_parse_integer()`.
+* Vendoring tooling: `tools/vendor/{fetch,record,verify}`, the manifest and
+  checksums, and `tools/run-parse-corpus`.

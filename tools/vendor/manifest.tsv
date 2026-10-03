@@ -1,0 +1,2 @@
+source	repo	tag	commit	version_string	archive	archive_sha256	license	defines	patches
+ffc	kolemannix/ffc.h	v26.09.01	965d4db45d03365b4c852ab34f4d5b08b53bc7b3	26.09.01	ffc.h:ffc.h	dc061f49e9e6cfef03b425ecc1d48991c526eeb41e0654ec8804766aad78da68	MIT	FFC_IMPL,FFC_LINKAGE=static,FFC_LINKAGE_EXTERN=static	0001-add-linkage-macros.patch,0002-drop-float-equal-pragmas.patch

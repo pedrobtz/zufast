@@ -8,7 +8,9 @@
 SEXP zufast_info(void)
 {
     const char *names[] = {"version", "version_major", "version_minor",
-                           "version_patch", "compiler", ""};
+                           "version_patch", "compiler", "vendored", ""};
+    const char *vendor_names[] = {"ffc", ""};
+    SEXP vendored;
     SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
     SET_VECTOR_ELT(out, 0, Rf_mkString(ZUFAST_VERSION));
     SET_VECTOR_ELT(out, 1, Rf_ScalarInteger(ZUFAST_VERSION_MAJOR));
@@ -21,6 +23,9 @@ SEXP zufast_info(void)
 #else
     SET_VECTOR_ELT(out, 4, Rf_mkString("unknown"));
 #endif
+    vendored = Rf_mkNamed(STRSXP, vendor_names);
+    SET_VECTOR_ELT(out, 5, vendored);
+    SET_STRING_ELT(vendored, 0, Rf_mkChar(ZUF_INT_FFC_VERSION_STRING));
     UNPROTECT(1);
     return out;
 }
@@ -268,6 +273,64 @@ SEXP zufast_format_date(SEXP x)
         }
         len = zuf_format_date(buf, sizeof buf, (int32_t)floor(v));
         SET_STRING_ELT(out, i, Rf_mkCharLenCE(buf, (int)len, CE_UTF8));
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* ---- numbers ------------------------------------------------------------ */
+
+/* The R-facing grammar (design 8.5): a leading '+' is accepted and ASCII
+   whitespace is trimmed from both ends; everything else must be consumed. */
+SEXP zufast_parse_double(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
+    double *o = REAL(out);
+    zuf_num_options opt;
+    opt.flags = ZUF_NUM_LEADING_PLUS;
+    opt.base = 10;
+    opt.decimal_point = '.';
+    for (i = 0; i < n; i++) {
+        SEXP s = STRING_ELT(x, i);
+        const char *first, *last;
+        double v;
+        zuf_result r;
+        o[i] = NA_REAL;
+        if (s == NA_STRING) continue;
+        first = CHAR(s);
+        last = first + LENGTH(s);
+        zuf_trim_space(&first, &last);
+        r = zuf_parse_f64_opt(first, last, &v, &opt);
+        if (r.status != ZUF_ERR_INVALID && r.ptr == last) o[i] = v;
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* NA for anything that is not a whole decimal integer in R's integer range
+   (NA_integer_ itself, INT_MIN, is out of range). */
+SEXP zufast_parse_integer(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocVector(INTSXP, n));
+    int *o = INTEGER(out);
+    zuf_num_options opt;
+    opt.flags = ZUF_NUM_LEADING_PLUS;
+    opt.base = 10;
+    opt.decimal_point = '.';
+    for (i = 0; i < n; i++) {
+        SEXP s = STRING_ELT(x, i);
+        const char *first, *last;
+        int32_t v;
+        zuf_result r;
+        o[i] = NA_INTEGER;
+        if (s == NA_STRING) continue;
+        first = CHAR(s);
+        last = first + LENGTH(s);
+        zuf_trim_space(&first, &last);
+        r = zuf_parse_i32_opt(first, last, &v, &opt);
+        if (r.status == ZUF_OK && r.ptr == last && v != INT32_MIN) o[i] = v;
     }
     UNPROTECT(1);
     return out;

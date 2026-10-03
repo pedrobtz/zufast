@@ -718,16 +718,21 @@ are applied by `fetch`, and each one is named in the manifest, in `inst/COPYRIGH
 | Files | `ffc.h` | `ryu/d2s.c`, `f2s.c`, `common.h`, `digit_table.h`, `d2s_intrinsics.h`, `d2s_full_table.h`, `f2s_intrinsics.h`, `f2s_full_table.h`, `ryu.h` | `xxhash.h` only |
 | Licence chosen | MIT, of the MIT / Apache-2.0 / Boost triple | Boost Software License 1.0, of the Apache-2.0 / Boost pair | BSD-2-Clause (the library; the `xxhsum` tool in the same repository is GPL and is not vendored) |
 | Installed licence text | `licenses/ffc-LICENSE` | `licenses/ryu-LICENSE` | `licenses/xxhash-LICENSE` |
-| Patches | 0001: wrap the `FFC_API_INLINE` block in `#ifndef`, so zufast can define it | 0001: `d2s.c` and `f2s.c` become `d2s.h` and `f2s.h`, their entry points `static inline`, their includes relative | none |
-| Configuration | `FFC_API` = `static inline`; `FFC_API_INLINE` = `static inline __attribute__((always_inline))` on GCC and clang; `FFC_IMPL` defined; `FFC_ROUNDS_TO_NEAREST` **not** defined | `RYU_OPTIMIZE_SIZE` not defined (full tables) | `XXH_INLINE_ALL`, `XXH_NO_STDLIB`; the vector path left to xxHash's compile-time choice |
+| Patches | 0001: add `FFC_LINKAGE` and `FFC_LINKAGE_EXTERN` (defaults: empty and `extern`) in front of every public declaration and definition, so zufast can make them all `static`; 0002: drop the `-Wfloat-equal` pragmas, which R CMD check reports | 0001: `d2s.c` and `f2s.c` become `d2s.h` and `f2s.h`, their entry points `static inline`, their includes relative | none |
+| Configuration | `FFC_IMPL` defined; `FFC_LINKAGE` = `FFC_LINKAGE_EXTERN` = `static`; `FFC_ROUNDS_TO_NEAREST` **not** defined | `RYU_OPTIMIZE_SIZE` not defined (full tables) | `XXH_INLINE_ALL`, `XXH_NO_STDLIB`; the vector path left to xxHash's compile-time choice |
 
 ### 18.1 ffc.h
 
 The canonical repository is `kolemannix/ffc.h`; `yuval-herman/ffc.h` is a fork. The header
 is used by valkey and hiredis, carries the `fast_float` authors in its notice, and its
-`ffc_internal` functions are already `static`. Only the public entry points need the two
-linkage macros above, and the patch exists because the four `ffc_from_chars_*` definitions
-use `FFC_API_INLINE`, which on GCC expands to `extern ... inline` and is not guarded.
+`ffc_internal` functions are already `static`. At v26.09.01 the 27 public functions carry no
+linkage macro (`FFC_API` is only the guard of the declaration block, and the two
+`ffc_from_chars_double*` definitions are `extern FFC_IMPL_INLINE`), so the patch adds
+`FFC_LINKAGE` and `FFC_LINKAGE_EXTERN` in front of each declaration and definition; with
+both defined as `static`, a probe compiled with `FFC_IMPL` has no global symbol. The few
+`ffc_internal` functions that are `static` without `inline` would warn when unused, so
+`vendor_config.h` relaxes `-Wunused-function` (and `-Wpedantic`, `-Wmissing-field-initializers`)
+inside the vendored header only; GCC and clang apply diagnostic pragmas by location.
 `FFC_ROUNDS_TO_NEAREST` is left undefined: it would remove a check that costs a few
 instructions, and an R session can have its rounding mode changed by another package.
 
@@ -1023,7 +1028,7 @@ Then: tag `v0.1.0`, submit, and move `main` to `0.1.0.9000`.
 | 15 | UUID representation | Sixteen bytes in network order, not two `uint64_t`. |
 | 16 | Boolean policy | Flag per spelling family; no missing-token parser. Policies belong to consumers. |
 | 17 | SIMD | None in v0.1.0; later only through target attributes with runtime dispatch inside the header (§19.3). MSVC dropped from the targets. |
-| 18 | Vendoring layout | Under `inst/include/zufast/vendor/`, since the headers are the product; zucrypt-generation manifest and scripts; three patches total, each upstreamed. |
+| 18 | Vendoring layout | Under `inst/include/zufast/vendor/`, since the headers are the product; zucrypt-generation manifest and scripts; a small patch set (linkage and CRAN-pragma fixes), each upstreamed. |
 | 19 | Where the R layer stops | §20: the `STRSXP` optimisations of revision 1 have no consumer and are dropped. |
 | 20 | Release plan | One release, v0.1.0, with every area; no stages. The delivery mechanism, not the breadth, is the risk, and it is proven by the fixture package. |
 | 21 | Varints, CRC32C, HTTP dates | Deferred until a consumer asks (§25). |

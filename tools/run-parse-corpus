@@ -1,0 +1,37 @@
+#!/bin/sh
+# Design 21.4: run the parse-number-fxx-test-data corpus (several million
+# decimal strings with reference float and double bits) against
+# zuf_parse_f32 and zuf_parse_f64. Network; not part of the test suite
+# because of its size. Run from the package root.
+#
+#   tools/run-parse-corpus [data-dir]   data-dir: an existing checkout's data/
+set -eu
+
+CC=${CC:-cc}
+REPO=nigeltao/parse-number-fxx-test-data
+REF=${PARSE_CORPUS_REF:-main}
+FILES="freetype-2-7.txt google-double-conversion.txt google-wuffs.txt ibm-fpgen.txt
+lemire-fast-double-parser.txt lemire-fast-float.txt more-test-cases.txt
+remyoudompheng-fptest-0.txt remyoudompheng-fptest-1.txt remyoudompheng-fptest-2.txt
+remyoudompheng-fptest-3.txt tencent-rapidjson.txt ulfjack-ryu.txt"
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+$CC -std=c99 -O2 -Wall -Wextra -Werror -Iinst/include tools/parse-corpus/driver.c -o "$TMP/driver"
+
+DATA=${1:-}
+if [ -z "$DATA" ]; then
+    DATA="$TMP/data"
+    mkdir -p "$DATA"
+    for f in $FILES; do
+        curl -sSfL --retry 3 -o "$DATA/$f" "https://raw.githubusercontent.com/$REPO/$REF/data/$f"
+    done
+fi
+
+status=0
+for f in "$DATA"/*.txt; do
+    printf '%s: ' "$(basename "$f")"
+    "$TMP/driver" < "$f" || status=1
+done
+exit $status

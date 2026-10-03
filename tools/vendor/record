@@ -1,0 +1,5 @@
+#!/bin/sh
+# Recompute tools/vendor/checksums.sha256 from the vendor tree. Offline.
+. "$(dirname "$0")/common.sh"
+record_checksums
+echo "recorded $(wc -l < "$CHECKSUMS" | tr -d ' ') files in $CHECKSUMS"

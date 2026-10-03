@@ -97,5 +97,34 @@ int zuf_probe_all(void)
         acc += (int)zuf_format_datetime(out, sizeof out, &dt);
     }
 
+    /* number.h */
+    {
+        static const char text[] = "-12.5e3";
+        char out[ZUF_I64_MAX_CHARS + 32];
+        double d;
+        float f;
+        int64_t i64;
+        uint64_t u64;
+        int32_t i32;
+        uint32_t u32;
+        zuf_num_options opt;
+        const char *e = text + sizeof text - 1;
+        opt.flags = ZUF_NUM_JSON | ZUF_NUM_LEADING_PLUS | ZUF_NUM_SKIP_SPACE;
+        opt.base = 16;
+        opt.decimal_point = ',';
+        acc += (int)zuf_parse_f64(text, e, &d).status + (int)zuf_parse_f32(text, e, &f).status;
+        acc += (int)zuf_parse_i64(text, e, &i64).status + (int)zuf_parse_u64(text, e, &u64).status;
+        acc += (int)zuf_parse_i32(text, e, &i32).status + (int)zuf_parse_u32(text, e, &u32).status;
+        acc += (int)zuf_parse_f64_opt(text, e, &d, &opt).status;
+        acc += (int)zuf_parse_f32_opt(text, e, &f, &opt).status;
+        acc += (int)zuf_parse_i64_opt(text, e, &i64, &opt).status;
+        acc += (int)zuf_parse_u64_opt(text, e, &u64, &opt).status;
+        acc += (int)zuf_parse_i32_opt(text, e, &i32, &opt).status;
+        acc += (int)zuf_parse_u32_opt(text, e, &u32, &opt).status;
+        acc += (int)(zuf_write_u64(out, 1) - out) + (int)(zuf_write_i64(out, -1) - out);
+        acc += (int)(zuf_write_u32(out, 1) - out) + (int)(zuf_write_i32(out, -1) - out);
+        acc += (int)zuf_format_f64_fixed(out, sizeof out, 0.5, 2);
+    }
+
     return acc;
 }
