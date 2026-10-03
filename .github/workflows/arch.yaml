@@ -4,7 +4,8 @@
 # (zuf_load_le*/be*, base64, xxHash) has nowhere else.
 #
 # Debian's R packages supply testthat on the Debian legs, with the locale R
-# CMD check asks for; Alpine builds testthat from source. Only testthat:
+# CMD check asks for; Alpine builds testthat from source (fs and ps need
+# libuv-dev and linux-headers). Only testthat:
 # the template's default dependency step resolves the package against
 # installed.packages(), where it is not yet, and so installs nothing. The
 # vignette is ignored -- whether it builds is R-CMD-check's question, and an
@@ -31,7 +32,7 @@ jobs:
           "setup": "apt-get update && apt-get install -y --no-install-recommends r-base-dev r-cran-testthat locales && echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen && locale-gen"},
          {"name": "musl", "platform": "linux/amd64",
           "image": "alpine:3.21",
-          "setup": "apk add --no-cache R R-dev R-doc build-base"},
+          "setup": "apk add --no-cache R R-dev R-doc build-base linux-headers libuv-dev"},
          {"name": "s390x", "platform": "linux/s390x",
           "image": "s390x/debian:bookworm",
           "setup": "apt-get update && apt-get install -y --no-install-recommends r-base-dev r-cran-testthat locales && echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen && locale-gen"}]
