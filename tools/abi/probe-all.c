@@ -124,6 +124,11 @@ int zuf_probe_all(void)
         acc += (int)(zuf_write_u64(out, 1) - out) + (int)(zuf_write_i64(out, -1) - out);
         acc += (int)(zuf_write_u32(out, 1) - out) + (int)(zuf_write_i32(out, -1) - out);
         acc += (int)zuf_format_f64_fixed(out, sizeof out, 0.5, 2);
+        acc += (int)zuf_format_f64(out, sizeof out, 0.1) + (int)zuf_format_f32(out, sizeof out, 0.1f);
+        acc += (int)zuf_format_f64_opt(out, sizeof out, 0.1, ZUF_FMT_SCIENTIFIC | ZUF_FMT_TRAILING_ZERO);
+        acc += (int)zuf_format_f32_opt(out, ZUF_F32_MAX_CHARS, 0.1f, 0);
+        acc += (int)zuf_decimal_f64(0.1).exponent + (int)zuf_decimal_f32(0.1f).mantissa;
+        acc += zuf_decimal_f64(-1.0).negative + ZUF_F64_MAX_CHARS;
     }
 
     return acc;

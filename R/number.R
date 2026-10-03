@@ -36,3 +36,37 @@ fast_parse_integer <- function(x) {
   check_character(x)
   .Call(zufast_parse_integer, x)
 }
+
+#' Format doubles with the shortest round-trip digits
+#'
+#' Writes each value with the fewest significant digits that parse back to
+#' exactly the same double, in the notation of ECMAScript's
+#' `Number.prototype.toString()`: positional for decimal exponents from -7 to
+#' 20 (`0.1`, `123.5`, `100`), `d.ddde+x` otherwise (`1e+21`, `1e-7`).
+#'
+#' This differs from [as.character()], which writes 15 significant digits:
+#' `as.character(0.1 + 0.2)` is `"0.3"`, while `fast_format_double(0.1 + 0.2)`
+#' is `"0.30000000000000004"`, because those are different doubles.
+#' `fast_parse_double(fast_format_double(x))` is identical to `x` for every
+#' double, including `-0`, which is written as `"-0"`.
+#'
+#' @param x A double vector.
+#' @param scientific Always use `d.ddde+x` notation.
+#' @param trailing_zero Write integral values in positional notation with a
+#'   trailing `.0`, as in `"1.0"`, so that they read back as non-integers in
+#'   languages that distinguish the two.
+#' @return A character vector; `NA` stays `NA`, `NaN`, `Inf` and `-Inf` are
+#'   written as R writes them.
+#' @export
+#' @examples
+#' fast_format_double(c(1, 0.1, 0.1 + 0.2, 1e21, 1e-7, -0, NA, Inf))
+#' fast_format_double(123.456, scientific = TRUE)
+#' fast_format_double(c(1, 2.5), trailing_zero = TRUE)
+fast_format_double <- function(x, scientific = FALSE, trailing_zero = FALSE) {
+  if (!is.double(x)) {
+    invalid_argument("`x` must be a double vector.")
+  }
+  check_flag(scientific, "scientific")
+  check_flag(trailing_zero, "trailing_zero")
+  .Call(zufast_format_double, x, as.integer(scientific) + 2L * as.integer(trailing_zero))
+}

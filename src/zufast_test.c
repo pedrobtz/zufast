@@ -669,3 +669,70 @@ SEXP zufast_test_format_fixed_vec(SEXP x, SEXP places)
     UNPROTECT(1);
     return out;
 }
+
+/* Shortest formatting: kind 0 double, 1 float (x converted). */
+SEXP zufast_test_format_shortest(SEXP x, SEXP flags, SEXP kind, SEXP cap)
+{
+    size_t c = (size_t)Rf_asReal(cap);
+    unsigned char *buf = sentinel_buffer(c);
+    uint32_t f = (uint32_t)Rf_asInteger(flags);
+    size_t r = Rf_asInteger(kind) == 0
+        ? zuf_format_f64_opt((char *)buf, c, Rf_asReal(x), f)
+        : zuf_format_f32_opt((char *)buf, c, (float)Rf_asReal(x), f);
+    return encode_result(r, buf, c);
+}
+
+/* Vectorised shortest float formatting (x converted to float). */
+SEXP zufast_test_format_f32_vec(SEXP x, SEXP flags)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    uint32_t f = (uint32_t)Rf_asInteger(flags);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        char buf[ZUF_F32_MAX_CHARS];
+        size_t len = zuf_format_f32_opt(buf, sizeof buf, (float)REAL(x)[i], f);
+        SET_STRING_ELT(out, i, Rf_mkCharLen(buf, (int)len));
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* zuf_decimal_f64 for doubles given as 16-digit hex bit patterns:
+   a character vector of "<negative> <mantissa> <exponent>". */
+SEXP zufast_test_decimal_bits(SEXP hex)
+{
+    R_xlen_t i, n = XLENGTH(hex);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        uint64_t bits = 0;
+        const char *h = CHAR(STRING_ELT(hex, i));
+        double v;
+        zuf_decimal d;
+        char buf[64], *p = buf;
+        int k;
+        for (k = 0; k < 16; k++) {
+            char ch = h[k];
+            bits = bits * 16 + (uint64_t)(ch <= '9' ? ch - '0' : ch - 'a' + 10);
+        }
+        memcpy(&v, &bits, 8);
+        d = zuf_decimal_f64(v);
+        *p++ = d.negative ? '1' : '0';
+        *p++ = ' ';
+        p = zuf_write_u64(p, d.mantissa);
+        *p++ = ' ';
+        p = zuf_write_i32(p, d.exponent);
+        SET_STRING_ELT(out, i, Rf_mkCharLen(buf, (int)(p - buf)));
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+/* (double)(float)x for each element. */
+SEXP zufast_test_to_f32(SEXP x)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
+    for (i = 0; i < n; i++) REAL(out)[i] = (double)(float)REAL(x)[i];
+    UNPROTECT(1);
+    return out;
+}

@@ -9,7 +9,7 @@ SEXP zufast_info(void)
 {
     const char *names[] = {"version", "version_major", "version_minor",
                            "version_patch", "compiler", "vendored", ""};
-    const char *vendor_names[] = {"ffc", ""};
+    const char *vendor_names[] = {"ffc", "ryu", ""};
     SEXP vendored;
     SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
     SET_VECTOR_ELT(out, 0, Rf_mkString(ZUFAST_VERSION));
@@ -26,6 +26,7 @@ SEXP zufast_info(void)
     vendored = Rf_mkNamed(STRSXP, vendor_names);
     SET_VECTOR_ELT(out, 5, vendored);
     SET_STRING_ELT(vendored, 0, Rf_mkChar(ZUF_INT_FFC_VERSION_STRING));
+    SET_STRING_ELT(vendored, 1, Rf_mkChar(ZUF_INT_RYU_VERSION));
     UNPROTECT(1);
     return out;
 }
@@ -331,6 +332,26 @@ SEXP zufast_parse_integer(SEXP x)
         zuf_trim_space(&first, &last);
         r = zuf_parse_i32_opt(first, last, &v, &opt);
         if (r.status == ZUF_OK && r.ptr == last && v != INT32_MIN) o[i] = v;
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+SEXP zufast_format_double(SEXP x, SEXP flags)
+{
+    R_xlen_t i, n = XLENGTH(x);
+    uint32_t f = (uint32_t)Rf_asInteger(flags);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        double v = REAL(x)[i];
+        char buf[ZUF_F64_MAX_CHARS];
+        size_t len;
+        if (ISNA(v)) {
+            SET_STRING_ELT(out, i, NA_STRING);
+            continue;
+        }
+        len = zuf_format_f64_opt(buf, sizeof buf, v, f);
+        SET_STRING_ELT(out, i, Rf_mkCharLenCE(buf, (int)len, CE_UTF8));
     }
     UNPROTECT(1);
     return out;
