@@ -941,7 +941,10 @@ the picture: `fuzz_number`, `fuzz_datetime`, `fuzz_uuid`, `fuzz_base64`, `fuzz_h
 `fuzz_number` also checks the parsers against the C library: doubles against glibc's
 correctly rounded `strtod`, integers in every base against `strtoll`/`strtoull`.
 `fuzz_hash` checks the streaming hasher, fed in input-chosen chunks, against the one-shot
-digests. `native-checks.yaml` runs the package under UBSan, ASan, valgrind, LTO, gctorture
+digests. `fuzz_upstream` (C++) checks every number parser, under every option and base,
+against fast_float itself (pinned in `tools/fuzz/fast_float`, outside the package): ffc is
+a port, so a divergence is a porting bug or an upstream fix ffc lacks. The one intended
+divergence is ffc's RFC 8259 rule that a JSON exponent needs digits (`1e` is invalid). `native-checks.yaml` runs the package under UBSan, ASan, valgrind, LTO, gctorture
 and rchk; `arch.yaml` runs the suite on i386, musl and big-endian s390x; and
 `vendor-upstream.yaml` opens an issue when a vendored library releases. All through
 `pedrobtz/r-actions`, pinned by commit.

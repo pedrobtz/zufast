@@ -23,6 +23,42 @@ test_that("out-of-range floats report RANGE and still write the value", {
   expect_identical(pn("3.5e38", 1L), list(RANGE, 6L, Inf))
 })
 
+test_that("classic hard cases round correctly (compared as IEEE bits)", {
+  # bits, not R literals: R's own parser is not correctly rounded everywhere
+  hex <- function(x) paste(as.character(writeBin(x, raw(), endian = "big")), collapse = "")
+  cases <- c(
+    "2.2250738585072011e-308" = "000fffffffffffff",   # largest subnormal (PHP hang)
+    "2.2250738585072012e-308" = "0010000000000000",   # smallest normal
+    "2.2250738585072012e-00308" = "0010000000000000", # Java hang
+    "4.9406564584124654e-324" = "0000000000000001",   # smallest subnormal
+    "2.4703282292062328e-324" = "0000000000000001",   # just above half of it
+    "9007199254740993" = "4340000000000000",          # 2^53 + 1: tie to even
+    "9007199254740993.0000000000000000000001" = "4340000000000001", # not a tie
+    "1.7976931348623158e308" = "7fefffffffffffff")    # rounds down to the max
+  for (s in names(cases)) {
+    r <- pn(s)
+    expect_identical(r[[1]], OK, label = s)
+    expect_identical(hex(r[[3]]), cases[[s]], label = s)
+  }
+  expect_identical(pn("2.4703282292062327e-324")[c(1, 3)], list(RANGE, 0))  # half: to zero
+  expect_identical(pn("1.7976931348623159e308")[c(1, 3)], list(RANGE, Inf))
+  # 400 digits on either side of the point
+  expect_identical(hex(pn(paste0("0.", strrep("0", 400), "1e400"))[[3]]), "3fb999999999999a")
+  expect_identical(pn(paste0("1", strrep("0", 400), "e-400"))[[3]], 1)
+})
+
+test_that("a dangling exponent ends the number, except in JSON", {
+  for (s in c("1e", "1e+", "1E-")) expect_identical(pn(s), list(OK, 1L, 1), label = s)
+  expect_identical(pn("1.5e-x"), list(OK, 3L, 1.5))
+  # RFC 8259 requires digits after e; ffc rejects (fast_float would accept "1")
+  for (s in c("1e", "1e+", "1.5E-", "0e")) {
+    expect_identical(pn(s, flags = JSON)[1:2], list(INVALID, 0L), label = s)
+  }
+  expect_identical(pn(strrep("0", 30), 2L), list(OK, 30L, "0"))
+  expect_identical(pn(paste0(strrep("0", 30), "18446744073709551615"), 3L)[[1]], OK)
+  expect_identical(pn("   ", flags = SPACE)[1:2], list(INVALID, 0L))
+})
+
 test_that("options: JSON, leading plus, whitespace, decimal point", {
   expect_identical(pn("+1", flags = PLUS), list(OK, 2L, 1))
   expect_identical(pn(" \t1", flags = SPACE), list(OK, 3L, 1))
