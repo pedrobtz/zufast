@@ -2,16 +2,20 @@
 
 ## Authors
 
-- **First Last**. Author, maintainer.
+- **Pedro Z**. Author, maintainer.
 
 ## Citation
 
-Last F (2026). *zufast: What the Package Does (One Line, Title Case)*. R
-package version 0.0.0.9000, <https://pedrobtz.github.io/zufast/>.
+Source:
+[`DESCRIPTION`](https://github.com/pedrobtz/zufast/blob/main/DESCRIPTION)
+
+Z P (2026). *zufast: Fast Portable C Primitives for Parsing and
+Formatting Data*. R package version 0.0.0.9000,
+<https://pedrobtz.github.io/zufast/>.
 
     @Manual{,
-      title = {zufast: What the Package Does (One Line, Title Case)},
-      author = {First Last},
+      title = {zufast: Fast Portable C Primitives for Parsing and Formatting Data},
+      author = {Pedro Z},
       year = {2026},
       note = {R package version 0.0.0.9000},
       url = {https://pedrobtz.github.io/zufast/},
