@@ -61,7 +61,7 @@ int zuf_probe_all(void)
         static const char hex[] = "00ff";
         static const char b64[] = "AP8=";
         static const char uuid_text[] = "123e4567-e89b-12d3-a456-426614174000";
-        unsigned char bytes[8];
+        unsigned char bytes[8] = {0, 0xFF, 0, 0, 0, 0, 0, 0};
         char text[ZUF_UUID_CHARS];
         size_t len = 0;
         zuf_uuid u;
