@@ -4,7 +4,6 @@ test_that("the DFA agrees with a reference validator exhaustively", {
   expect_gt(r[2], 3e7)
 })
 
-bytes <- function(...) as.raw(c(...))
 
 test_that("Markus Kuhn's stress-test classes are classified correctly", {
   valid <- list(

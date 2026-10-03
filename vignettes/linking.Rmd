@@ -1,0 +1,143 @@
+---
+title: "Linking to zufast"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Linking to zufast}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(zufast)
+```
+
+zufast is consumed by including a header. This vignette states what a package
+that does so can rely on, and the two places where zufast deliberately
+differs from base R.
+
+## The consumption mode
+
+A consumer declares
+
+```
+LinkingTo: zufast
+```
+
+and nothing else: no `Imports:`, no `importFrom()`, no `configure`, no
+`PKG_LIBS`. R puts zufast's `include/` directory on the compiler's search
+path, so both `#include <zufast.h>` and `#include "zufast.h"` work.
+
+Every function in the headers is `static inline`. Each translation unit that
+includes a zufast header gets its own copy of what it uses and nothing of what
+it does not; the compiler discards the rest. There is no implementation macro,
+no "exactly one translation unit" rule, and nothing to link. This is what
+makes the primitives fast: a call to `zuf_load_be32()` or `zuf_write_i64()`
+inlines into the caller's loop, which an indirect call through
+`R_GetCCallable()` would forbid.
+
+zufast need not be installed when the consumer runs, only when it is built.
+The fixture package in zufast's repository proves this on every change by
+uninstalling zufast and running the fixture's tests again.
+
+### Linkage rules
+
+1. **Every symbol zufast emits is `static`**, its own functions and the
+   vendored libraries' alike. A consumer's shared object contains no global
+   `zuf_`, `ffc_`, `XXH` or Ryu symbol, so two packages that both use zufast,
+   loaded into one R session, can never bind to each other's copies.
+2. **Functions are `static inline`, never plain `static`**, so a unit that
+   includes a header without calling everything in it is not warned at under
+   `-Wall -Wextra -Werror`. The vendored libraries are compiled with
+   `-Wunused-function`, `-Wpedantic` and `-Wmissing-field-initializers`
+   relaxed, and only inside the vendored headers.
+3. **Consumers compile with `PKG_CFLAGS = $(C_VISIBILITY)`**, as the zu family
+   does. It is defence in depth, not load-bearing: rule 1 is what prevents the
+   collision.
+4. **The headers reference nothing R CMD check forbids in compiled code**: no
+   `printf`, `abort`, `exit`, `assert`, `rand`, `stdout` or `stderr`. A
+   violation would surface as a NOTE in every consumer, so it is audited in
+   zufast's CI by compiling a unit that calls every public function with R's
+   own flags.
+
+## The contract: source compatibility, not ABI
+
+Because nothing crosses a shared-object boundary, there is no ABI to keep.
+Within major version 1:
+
+- a function, type, macro or enumerator that exists in a release exists in
+  every later release with the same meaning;
+- enumerator values are permanent;
+- a consumer built against an older zufast keeps working unchanged, because it
+  carries its own copy of the code;
+- a consumer that rebuilds against a newer zufast compiles without change.
+
+Names prefixed `zuf_int_` or `ZUF_INT_` are internal: they are visible in the
+installed headers, but outside the promise. So is anything reached by
+including a vendored header under `zufast/vendor/` directly.
+
+`ZUFAST_VERSION_MAJOR`, `ZUFAST_VERSION_MINOR`, `ZUFAST_VERSION_PATCH`,
+`ZUFAST_VERSION_NUMBER` and the string `ZUFAST_VERSION` let a consumer assert
+the version it is compiled against:
+
+```c
+#include <zufast/version.h>
+#if ZUFAST_VERSION_NUMBER < 100
+#  error "this package needs zufast 0.1.0 or later"
+#endif
+```
+
+zufast's own copy of the headers reports itself from R:
+
+```{r}
+fast_info()[c("version", "vendored")]
+```
+
+## The result model
+
+Parsers return a `zuf_result`: a status and the position where parsing
+stopped. Its `ptr` follows `std::from_chars`: on `ZUF_OK` and `ZUF_ERR_RANGE`
+it is one past the last byte consumed, on `ZUF_ERR_INVALID` it equals
+`first`. A parser never requires the whole span to be consumed, so a reader
+that needs "the entire cell is a number" checks `r.ptr == last`. `ZUF_OK` is
+0 and no status is negative, so `if (r.status)` means "not success".
+
+Formatters return the length the value needs, write at most `cap` bytes,
+never NUL-terminate, and measure when `cap == 0`. The `ZUF_*_MAX_CHARS`
+macros are capacities that always suffice.
+
+## Two differences from base R
+
+### Parsing doubles: correctly rounded, not `as.numeric()`
+
+`zuf_parse_f64()` returns the double nearest to the decimal value, ties to
+even, on every platform and in every rounding mode: the algorithm of
+fast_float, which is also GCC's `std::from_chars`. R's `as.numeric()`
+accumulates digits in `long double` and scales by a power of ten; it is not
+correctly rounded, and its result depends on whether R was built with
+`long double`. The two differ in the last bit for roughly one ordinary decimal
+in five thousand:
+
+```{r}
+x <- "0.799012"
+fast_parse_double(x) == as.numeric(x)
+sprintf("%a", c(zufast = fast_parse_double(x), base = as.numeric(x)))
+```
+
+zufast offers no "R-compatible" mode. A consumer that needs `as.numeric()`'s
+exact results calls `R_strtod()`.
+
+### Formatting doubles: shortest round trip, not fifteen digits
+
+`zuf_format_f64()` writes the fewest significant digits that parse back to
+exactly the same double, in the notation of ECMAScript's `Number::toString`:
+positional for decimal exponents from -7 to 20, `d.ddde+x` otherwise. R's
+`as.character()` writes fifteen significant digits, which is a different
+thing: it can print two different doubles identically, and print one double
+with digits it does not need.
+
+```{r}
+x <- c(0.1 + 0.2, 0.3, 1e21, 1e-7, 1 / 3)
+data.frame(zufast = fast_format_double(x), base = as.character(x))
+identical(fast_parse_double(fast_format_double(x)), x)
+```

@@ -1,9 +1,3 @@
-SCI <- 1L; TRAIL <- 2L
-fmt <- function(x, flags = 0L, kind = 0L, cap = 64) {
-  r <- .Call(zufast_test_format_shortest, x, flags, kind, cap)
-  if (r[[1]] <= cap) rawToChar(r[[2]][seq_len(r[[1]])]) else r
-}
-
 test_that("ECMAScript notation, design 9.1", {
   expect_identical(fast_format_double(c(1, 0.1, 0.1 + 0.2, 1e21, 1e-7, 1e-6, 1e20, 123.456)),
                    c("1", "0.1", "0.30000000000000004", "1e+21", "1e-7", "0.000001",

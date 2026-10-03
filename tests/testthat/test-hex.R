@@ -1,7 +1,3 @@
-hex_enc <- function(raw, cap, upper = FALSE) .Call(zufast_test_hex_encode, raw, cap, upper)
-hex_dec <- function(s, cap) .Call(zufast_test_hex_decode, str_raw(s), cap)
-SENT <- as.raw(0xA5)
-
 test_that("zuf_hex_encode() matches the reference for every 1- and 2-byte input", {
   all2 <- expand.grid(a = 0:255, b = 0:255)
   for (i in seq(1, nrow(all2), by = 97)) {

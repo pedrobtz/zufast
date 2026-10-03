@@ -2,3 +2,27 @@ url: https://pedrobtz.github.io/zufast/
 template:
   bootstrap: 5
 
+reference:
+  - title: Numbers
+    contents:
+      - fast_parse_double
+      - fast_format_double
+  - title: Dates and timestamps
+    contents:
+      - fast_parse_date
+      - fast_format_datetime
+  - title: Bytes and text
+    contents:
+      - fast_hex_encode
+      - fast_base64_encode
+      - fast_utf8_valid
+      - fast_hash
+  - title: The package
+    contents:
+      - fast_info
+      - zufast-package
+
+articles:
+  - title: Using zufast from C
+    contents:
+      - linking

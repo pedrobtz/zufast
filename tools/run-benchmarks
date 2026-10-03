@@ -1,0 +1,14 @@
+#!/bin/sh
+# Design 22: run tools/benchmarks.R against the installed zufast, installing
+# the comparison packages into a temporary library if they are missing.
+# Run from the package root; append the output to .agents/benchmarks.md
+# together with the commit it was taken at.
+set -eu
+LIB=${BENCH_LIB:-$(mktemp -d)}
+R_LIBS="$LIB${R_LIBS:+:$R_LIBS}" R_PROFILE=/dev/null Rscript -e "
+  need <- c('bench', 'RcppFastFloat', 'fasttime', 'clock', 'digest', 'base64enc', 'jsonlite')
+  miss <- need[!vapply(need, requireNamespace, NA, quietly = TRUE)]
+  if (length(miss)) install.packages(miss, lib = '$LIB', repos = 'https://cloud.r-project.org')
+"
+echo "commit $(git rev-parse --short HEAD)"
+R_LIBS="$LIB${R_LIBS:+:$R_LIBS}" Rscript tools/benchmarks.R

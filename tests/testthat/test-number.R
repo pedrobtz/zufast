@@ -1,9 +1,3 @@
-OK <- 0L; INVALID <- 1L; RANGE <- 2L
-JSON <- 1L; PLUS <- 2L; SPACE <- 4L
-pn <- function(s, kind = 0L, flags = 0L, base = 10L, dp = 0L) {
-  .Call(zufast_test_parse_num, charToRaw(s), kind, flags, base, dp)
-}
-
 test_that("the default float grammar and from_chars ptr semantics", {
   expect_identical(pn("1.5"), list(OK, 3L, 1.5))
   expect_identical(pn("-2.5e-3xyz"), list(OK, 7L, -2.5e-3))

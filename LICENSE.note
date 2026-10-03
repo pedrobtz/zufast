@@ -1,0 +1,18 @@
+zufast is licensed under the MIT licence (see LICENSE and LICENSE.md).
+
+It bundles, under inst/include/zufast/vendor/, code from three upstream
+libraries, each under its own licence, and a state table transcribed into
+inst/include/zufast/utf8.h:
+
+  ffc.h    (C port of fast_float)   MIT            licenses/ffc-LICENSE
+  Ryu      (d2s, f2s)               Boost-1.0      licenses/ryu-LICENSE
+  xxHash   (xxhash.h only)          BSD-2-Clause   licenses/xxhash-LICENSE
+  Hoehrmann's UTF-8 DFA table       MIT            notice in utf8.h
+
+The licence texts are installed with the package under licenses/. Because
+zufast is header-only, every package that uses `LinkingTo: zufast` compiles
+this code into its own shared object, which is a redistribution these
+licences permit with their notices kept. inst/COPYRIGHTS gives the copyright
+holders, the pinned upstream commits and the patches applied;
+tools/vendor/manifest.tsv in the source repository records the same, with
+checksums.
