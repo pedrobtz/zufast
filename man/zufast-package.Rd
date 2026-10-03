@@ -25,5 +25,10 @@ Authors:
   \item Pedro Z \email{pedrobtz@gmail.com}
 }
 
+Other contributors:
+\itemize{
+  \item Bjoern Hoehrmann (UTF-8 decoder state table in inst/include/zufast/utf8.h) [copyright holder]
+}
+
 }
 \keyword{internal}

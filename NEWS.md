@@ -9,3 +9,7 @@
   endian loads, stores and byte swaps.
 * `zufast/utf8.h` and `fast_utf8_valid()`: UTF-8 validation and code-point
   counting with Hoehrmann's DFA.
+* `zufast/hex.h`, `zufast/base64.h` and `zufast/uuid.h`: hex and strict
+  Base64 (standard and URL alphabets, optional padding) codecs and UUID
+  parsing and formatting; `fast_hex_encode()`, `fast_hex_decode()`,
+  `fast_base64_encode()` and `fast_base64_decode()`.
