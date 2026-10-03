@@ -22,5 +22,6 @@
 #include "zufast/uuid.h"
 #include "zufast/datetime.h"
 #include "zufast/number.h"
+#include "zufast/hash.h"
 
 #endif /* ZUFAST_H */

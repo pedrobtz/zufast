@@ -30,3 +30,6 @@
   `zuf_format_f64()`, `zuf_format_f32()`, the `_opt` variants with
   `ZUF_FMT_SCIENTIFIC` and `ZUF_FMT_TRAILING_ZERO`, `zuf_decimal_f64()`,
   `zuf_decimal_f32()`; `fast_format_double()`.
+* `zufast/hash.h`: XXH3 64- and 128-bit hashing through the vendored
+  `xxhash.h` (v0.8.4), one-shot and streaming with a stack-allocatable
+  `zuf_hasher`; `fast_hash()`. XXH3 is not a cryptographic hash.
