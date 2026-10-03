@@ -131,5 +131,21 @@ int zuf_probe_all(void)
         acc += zuf_decimal_f64(-1.0).negative + ZUF_F64_MAX_CHARS;
     }
 
+    /* hash.h */
+    {
+        static const char data[] = "zufast";
+        zuf_hasher h;
+        zuf_digest128 d;
+        acc += (int)(zuf_hash64(data, 6) & 1) + (int)(zuf_hash64_seed(data, 6, 1) & 1);
+        d = zuf_hash128(data, 6);
+        acc += (int)(d.low & 1);
+        d = zuf_hash128_seed(data, 6, 1);
+        acc += (int)(d.high & 1);
+        zuf_hasher_init(&h, 0);
+        zuf_hasher_update(&h, data, 6);
+        acc += (int)(zuf_hasher_digest64(&h) & 1) + (int)(zuf_hasher_digest128(&h).low & 1);
+        acc += ZUF_HASHER_SIZE;
+    }
+
     return acc;
 }

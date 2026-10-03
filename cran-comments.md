@@ -15,6 +15,7 @@ licences, pinned commits and checksums. The following patches are applied:
 * Ryu: `0001-header-only.patch` turns `d2s.c` and `f2s.c` into headers with
   `static inline` entry points and routes `assert()` through a macro that
   zufast defines away.
+* xxHash: not patched.
 
 ## R CMD check results
 

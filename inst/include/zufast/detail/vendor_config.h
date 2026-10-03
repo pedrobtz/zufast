@@ -17,6 +17,9 @@
 #define FFC_LINKAGE static
 #define FFC_LINKAGE_EXTERN static
 #define RYU_ASSERT(x) ((void)0)
+#define XXH_INLINE_ALL
+#define XXH_NO_STDLIB
+#define XXH_DEBUGLEVEL 0
 /* END VENDOR DEFINES */
 
 /* Ryu has no version macro; the pinned tag, as in the manifest. */

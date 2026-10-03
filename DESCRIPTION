@@ -4,7 +4,13 @@ Version: 0.0.0.9000
 Authors@R: 
     c(person("Pedro", "Z", , "pedrobtz@gmail.com", role = c("aut", "cre")),
       person("Bjoern", "Hoehrmann", role = "cph",
-             comment = "UTF-8 decoder state table in inst/include/zufast/utf8.h"))
+             comment = "UTF-8 decoder state table in inst/include/zufast/utf8.h"),
+      person("The fast_float authors", role = "cph",
+             comment = "fast_float, ported to C as ffc.h"),
+      person("Koleman", "Nix", role = "cph",
+             comment = "ffc.h, the C port of fast_float"),
+      person("Ulf", "Adams", role = "cph", comment = "Ryu"),
+      person("Yann", "Collet", role = "cph", comment = "xxHash"))
 Description: A header-only library of small, fast, portable C99 primitives
     for converting external text and bytes into native values and back:
     correctly rounded number parsing, shortest round-trip number formatting,
@@ -13,7 +19,7 @@ Description: A header-only library of small, fast, portable C99 primitives
     validation. Other packages use it through 'LinkingTo' alone; the R
     functions exist to test, benchmark and demonstrate the C layer.
 License: MIT + file LICENSE
-Copyright: See inst/COPYRIGHTS.
+Copyright: See inst/COPYRIGHTS and tools/vendor/manifest.tsv.
 URL: https://pedrobtz.github.io/zufast/, https://github.com/pedrobtz/zufast
 BugReports: https://github.com/pedrobtz/zufast/issues
 Depends: 

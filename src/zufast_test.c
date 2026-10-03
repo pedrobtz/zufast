@@ -736,3 +736,126 @@ SEXP zufast_test_to_f32(SEXP x)
     UNPROTECT(1);
     return out;
 }
+
+/* ---- hash.h ------------------------------------------------------------- */
+
+/* xxHash's sanity buffer (tests/sanity_test.c, fillTestBuffer). */
+#define SANITY_BUFFER_SIZE (4096 + 64 + 1)
+
+static const unsigned char *sanity_buffer(void)
+{
+    static unsigned char buf[SANITY_BUFFER_SIZE];
+    static int ready = 0;
+    if (!ready) {
+        uint64_t gen = 2654435761U;
+        size_t i;
+        for (i = 0; i < SANITY_BUFFER_SIZE; i++) {
+            buf[i] = (unsigned char)(gen >> 56);
+            gen *= UINT64_C(11400714785074694797);
+        }
+        ready = 1;
+    }
+    return buf;
+}
+
+static uint64_t parse_hex64(const char *h)
+{
+    uint64_t v = 0;
+    for (; *h; h++) v = v * 16 + (uint64_t)(*h <= '9' ? *h - '0' : (*h | 0x20) - 'a' + 10);
+    return v;
+}
+
+/* Hash a prefix of the sanity buffer for each (len, seed): kind 64 gives
+   "<hash>", kind 128 gives "<low> <high>", in lower-case hex. */
+SEXP zufast_test_xxh3_vectors(SEXP len, SEXP seed, SEXP kind)
+{
+    R_xlen_t i, n = XLENGTH(len);
+    int k = Rf_asInteger(kind);
+    const unsigned char *buf = sanity_buffer();
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+    for (i = 0; i < n; i++) {
+        size_t l = (size_t)INTEGER(len)[i];
+        uint64_t s = parse_hex64(CHAR(STRING_ELT(seed, i)));
+        char text[40];
+        if (k == 64) {
+            hex64(text, zuf_hash64_seed(buf, l, s));
+        } else {
+            zuf_digest128 h = zuf_hash128_seed(buf, l, s);
+            hex64(text, h.low);
+            text[16] = ' ';
+            hex64(text + 17, h.high);
+        }
+        SET_STRING_ELT(out, i, Rf_mkChar(text));
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+static int same128(zuf_digest128 a, zuf_digest128 b)
+{
+    return a.low == b.low && a.high == b.high;
+}
+
+/* For every length 0..maxlen: the zufast one-shot equals XXH3 called
+   directly, the unseeded functions equal seed 0, and streaming equals
+   one-shot at every split point (and in single bytes); then the same for a
+   1 MiB buffer at a few split points. Seeds 0 and a non-zero seed. Returns
+   the number of failures. */
+SEXP zufast_test_xxh3_streaming(SEXP maxlen)
+{
+    size_t max = (size_t)Rf_asInteger(maxlen), l, split, i;
+    const uint64_t seeds[2] = {0, UINT64_C(0x9E3779B185EBCA8D)};
+    size_t big = (size_t)1 << 20;
+    unsigned char *mem = (unsigned char *)R_alloc(big, 1);
+    double bad = 0;
+    int si;
+    {
+        uint64_t gen = 1;
+        for (i = 0; i < big; i++) { gen = gen * UINT64_C(6364136223846793005) + 1; mem[i] = (unsigned char)(gen >> 33); }
+    }
+    for (si = 0; si < 2; si++) {
+        uint64_t seed = seeds[si];
+        for (l = 0; l <= max; l++) {
+            uint64_t h64 = zuf_hash64_seed(mem, l, seed);
+            zuf_digest128 h128 = zuf_hash128_seed(mem, l, seed);
+            XXH128_hash_t direct = XXH3_128bits_withSeed(mem, l, seed);
+            bad += h64 != XXH3_64bits_withSeed(mem, l, seed);
+            bad += h128.low != direct.low64 || h128.high != direct.high64;
+            if (seed == 0) {
+                bad += zuf_hash64(mem, l) != h64;
+                bad += !same128(zuf_hash128(mem, l), h128);
+            }
+            for (split = 0; split <= l; split++) {
+                zuf_hasher h;
+                zuf_hasher_init(&h, seed);
+                zuf_hasher_update(&h, mem, split);
+                zuf_hasher_update(&h, mem + split, l - split);
+                bad += zuf_hasher_digest64(&h) != h64;
+                bad += !same128(zuf_hasher_digest128(&h), h128);
+            }
+            {
+                zuf_hasher h;
+                zuf_hasher_init(&h, seed);
+                for (i = 0; i < l; i++) zuf_hasher_update(&h, mem + i, 1);
+                bad += zuf_hasher_digest64(&h) != h64;
+            }
+        }
+        {
+            const size_t splits[] = {0, 1, 63, 64, 65, 1023, 1024, 4096, 65537, 999999};
+            uint64_t h64 = zuf_hash64_seed(mem, big, seed);
+            zuf_digest128 h128 = zuf_hash128_seed(mem, big, seed);
+            bad += h64 != XXH3_64bits_withSeed(mem, big, seed);
+            for (i = 0; i < sizeof splits / sizeof splits[0]; i++) {
+                zuf_hasher h;
+                size_t a = splits[i], b = a + (big - a) / 3;
+                zuf_hasher_init(&h, seed);
+                zuf_hasher_update(&h, mem, a);
+                zuf_hasher_update(&h, mem + a, b - a);
+                zuf_hasher_update(&h, mem + b, big - b);
+                bad += zuf_hasher_digest64(&h) != h64;
+                bad += !same128(zuf_hasher_digest128(&h), h128);
+            }
+        }
+    }
+    return Rf_ScalarReal(bad);
+}

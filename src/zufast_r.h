@@ -19,6 +19,7 @@ SEXP zufast_format_date(SEXP x);
 SEXP zufast_parse_double(SEXP x);
 SEXP zufast_parse_integer(SEXP x);
 SEXP zufast_format_double(SEXP x, SEXP flags);
+SEXP zufast_hash(SEXP x, SEXP bits, SEXP seed);
 
 /* zufast_test.c */
 SEXP zufast_test_status_string(SEXP status);
@@ -57,5 +58,7 @@ SEXP zufast_test_format_shortest(SEXP x, SEXP flags, SEXP kind, SEXP cap);
 SEXP zufast_test_format_f32_vec(SEXP x, SEXP flags);
 SEXP zufast_test_decimal_bits(SEXP hex);
 SEXP zufast_test_to_f32(SEXP x);
+SEXP zufast_test_xxh3_vectors(SEXP len, SEXP seed, SEXP kind);
+SEXP zufast_test_xxh3_streaming(SEXP maxlen);
 
 #endif

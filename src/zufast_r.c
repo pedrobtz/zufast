@@ -1,5 +1,6 @@
 /* The .Call wrappers behind R/. They include <zufast.h> like any consumer. */
 #include <math.h>
+#include <stdio.h>
 
 #include <zufast.h>
 
@@ -9,7 +10,7 @@ SEXP zufast_info(void)
 {
     const char *names[] = {"version", "version_major", "version_minor",
                            "version_patch", "compiler", "vendored", ""};
-    const char *vendor_names[] = {"ffc", "ryu", ""};
+    const char *vendor_names[] = {"ffc", "ryu", "xxhash", ""};
     SEXP vendored;
     SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
     SET_VECTOR_ELT(out, 0, Rf_mkString(ZUFAST_VERSION));
@@ -27,6 +28,12 @@ SEXP zufast_info(void)
     SET_VECTOR_ELT(out, 5, vendored);
     SET_STRING_ELT(vendored, 0, Rf_mkChar(ZUF_INT_FFC_VERSION_STRING));
     SET_STRING_ELT(vendored, 1, Rf_mkChar(ZUF_INT_RYU_VERSION));
+    {
+        char v[16];
+        int xxh = ZUF_INT_XXH_VERSION_NUMBER;
+        snprintf(v, sizeof v, "%d.%d.%d", xxh / 10000, xxh / 100 % 100, xxh % 100);
+        SET_STRING_ELT(vendored, 2, Rf_mkChar(v));
+    }
     UNPROTECT(1);
     return out;
 }
@@ -355,4 +362,52 @@ SEXP zufast_format_double(SEXP x, SEXP flags)
     }
     UNPROTECT(1);
     return out;
+}
+
+/* ---- hashing ------------------------------------------------------------ */
+
+static void hex64_be(char *dst, uint64_t v)
+{
+    static const char digits[] = "0123456789abcdef";
+    int i;
+    for (i = 15; i >= 0; i--) { dst[i] = digits[v & 15]; v >>= 4; }
+}
+
+/* XXH3 as lower-case hex in xxHash's canonical (big-endian) form: 16 digits
+   for 64 bits, 32 (high half first) for 128. */
+static SEXP hash_one(const void *data, size_t n, int bits, uint64_t seed)
+{
+    char buf[32];
+    if (bits == 64) {
+        hex64_be(buf, zuf_hash64_seed(data, n, seed));
+        return Rf_mkCharLen(buf, 16);
+    } else {
+        zuf_digest128 h = zuf_hash128_seed(data, n, seed);
+        hex64_be(buf, h.high);
+        hex64_be(buf + 16, h.low);
+        return Rf_mkCharLen(buf, 32);
+    }
+}
+
+SEXP zufast_hash(SEXP x, SEXP bits, SEXP seed)
+{
+    int b = Rf_asInteger(bits);
+    uint64_t s = (uint64_t)Rf_asReal(seed);
+    if (TYPEOF(x) == RAWSXP) {
+        SEXP out = PROTECT(Rf_allocVector(STRSXP, 1));
+        SET_STRING_ELT(out, 0, hash_one(RAW(x), (size_t)XLENGTH(x), b, s));
+        UNPROTECT(1);
+        return out;
+    }
+    {
+        R_xlen_t i, n = XLENGTH(x);
+        SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+        for (i = 0; i < n; i++) {
+            SEXP e = STRING_ELT(x, i);
+            SET_STRING_ELT(out, i, e == NA_STRING ? NA_STRING
+                           : hash_one(CHAR(e), (size_t)LENGTH(e), b, s));
+        }
+        UNPROTECT(1);
+        return out;
+    }
 }

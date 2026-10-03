@@ -43,3 +43,18 @@ include/zufast/vendor/ryu/ -- shortest round-trip digits of double and float
   Patched: tools/patches/ryu/0001-header-only.patch installs d2s.c and
   f2s.c as d2s_impl.h and f2s_impl.h with static inline entry points,
   relative includes, and assert() routed through RYU_ASSERT.
+
+------------------------------------------------------------------------------
+include/zufast/vendor/xxhash.h -- XXH3 hashing
+
+  xxHash, https://github.com/Cyan4973/xxHash
+  Pinned at tag v0.8.4 (commit c87183a77d67f7d37e3d2d1b7eaac5e7c695e4f0).
+  Only xxhash.h is vendored; the xxhsum command-line tool in the same
+  repository is GPL-2 and is not included.
+
+  Copyright (c) 2012-2021 Yann Collet.
+  Licence: BSD 2-Clause. Licence text: licenses/xxhash-LICENSE.
+  Not patched.
+
+  tests/testthat/fixtures/xxh3-vectors.tsv is a subset of xxHash's
+  tests/sanity_test_vectors.h, under the same licence.
