@@ -8,6 +8,8 @@
 static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_info, 0),
     CALLDEF(zufast_utf8_valid, 1),
+    CALLDEF(zufast_encode, 3),
+    CALLDEF(zufast_decode, 3),
     CALLDEF(zufast_test_status_string, 1),
     CALLDEF(zufast_test_mul128, 2),
     CALLDEF(zufast_test_parse_bool, 2),
@@ -20,6 +22,13 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_test_endian, 2),
     CALLDEF(zufast_test_utf8_exhaustive, 0),
     CALLDEF(zufast_test_utf8_count, 1),
+    CALLDEF(zufast_test_hex_encode, 3),
+    CALLDEF(zufast_test_hex_decode, 2),
+    CALLDEF(zufast_test_base64_encode, 3),
+    CALLDEF(zufast_test_base64_decode, 3),
+    CALLDEF(zufast_test_base64_bounds, 1),
+    CALLDEF(zufast_test_parse_uuid, 1),
+    CALLDEF(zufast_test_format_uuid, 3),
     {NULL, NULL, 0}
 };
 

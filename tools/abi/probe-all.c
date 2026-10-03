@@ -56,5 +56,24 @@ int zuf_probe_all(void)
         acc += valid;
     }
 
+    /* hex.h, base64.h, uuid.h */
+    {
+        static const char hex[] = "00ff";
+        static const char b64[] = "AP8=";
+        static const char uuid_text[] = "123e4567-e89b-12d3-a456-426614174000";
+        unsigned char bytes[8];
+        char text[ZUF_UUID_CHARS];
+        size_t len = 0;
+        zuf_uuid u;
+        acc += (int)zuf_hex_encode(bytes, 2, text, sizeof text, false);
+        acc += (int)zuf_hex_decode(hex, hex + 4, bytes, sizeof bytes, &len);
+        acc += (int)zuf_base64_encode_bound(3) + (int)zuf_base64_decode_bound(4);
+        acc += (int)zuf_base64_encode(bytes, 2, text, sizeof text, ZUF_B64_URL | ZUF_B64_NO_PAD);
+        acc += (int)zuf_base64_decode(b64, b64 + 4, bytes, sizeof bytes, &len, 0);
+        acc += (int)zuf_parse_uuid(uuid_text, uuid_text + ZUF_UUID_CHARS, &u).status;
+        acc += (int)zuf_format_uuid(text, sizeof text, &u, true);
+        acc += (int)len;
+    }
+
     return acc;
 }

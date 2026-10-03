@@ -262,3 +262,117 @@ SEXP zufast_test_utf8_count(SEXP raw)
     UNPROTECT(1);
     return out;
 }
+
+/* ---- hex.h, base64.h, uuid.h ------------------------------------------- */
+
+#define SENTINEL 0xA5
+#define SLACK 8
+
+/* list(return value, the whole buffer of cap + SLACK bytes as raw). The
+   buffer starts filled with SENTINEL, so writes past cap are visible. */
+static SEXP encode_result(size_t ret, const unsigned char *buf, size_t cap)
+{
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP raw = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t)(cap + SLACK)));
+    memcpy(RAW(raw), buf, cap + SLACK);
+    SET_VECTOR_ELT(out, 0, Rf_ScalarReal((double)ret));
+    SET_VECTOR_ELT(out, 1, raw);
+    UNPROTECT(2);
+    return out;
+}
+
+/* list(status, out_len, buffer) */
+static SEXP decode_result(zuf_status st, size_t out_len, const unsigned char *buf, size_t cap)
+{
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, 3));
+    SEXP raw = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t)(cap + SLACK)));
+    memcpy(RAW(raw), buf, cap + SLACK);
+    SET_VECTOR_ELT(out, 0, Rf_ScalarInteger((int)st));
+    SET_VECTOR_ELT(out, 1, Rf_ScalarReal((double)out_len));
+    SET_VECTOR_ELT(out, 2, raw);
+    UNPROTECT(2);
+    return out;
+}
+
+static unsigned char *sentinel_buffer(size_t cap)
+{
+    unsigned char *buf = (unsigned char *)R_alloc(cap + SLACK, 1);
+    memset(buf, SENTINEL, cap + SLACK);
+    return buf;
+}
+
+SEXP zufast_test_hex_encode(SEXP raw, SEXP cap, SEXP upper)
+{
+    size_t c = (size_t)Rf_asReal(cap);
+    unsigned char *buf = sentinel_buffer(c);
+    size_t r = zuf_hex_encode(RAW(raw), (size_t)XLENGTH(raw), (char *)buf, c, Rf_asLogical(upper));
+    return encode_result(r, buf, c);
+}
+
+SEXP zufast_test_hex_decode(SEXP raw, SEXP cap)
+{
+    size_t c = (size_t)Rf_asReal(cap), len = 99;
+    unsigned char *buf = sentinel_buffer(c);
+    const char *s = (const char *)RAW(raw);
+    zuf_status st = zuf_hex_decode(s, s + XLENGTH(raw), buf, c, &len);
+    return decode_result(st, len, buf, c);
+}
+
+SEXP zufast_test_base64_encode(SEXP raw, SEXP cap, SEXP flags)
+{
+    size_t c = (size_t)Rf_asReal(cap);
+    unsigned char *buf = sentinel_buffer(c);
+    size_t r = zuf_base64_encode(RAW(raw), (size_t)XLENGTH(raw), (char *)buf, c,
+                                 (uint32_t)Rf_asInteger(flags));
+    return encode_result(r, buf, c);
+}
+
+SEXP zufast_test_base64_decode(SEXP raw, SEXP cap, SEXP flags)
+{
+    size_t c = (size_t)Rf_asReal(cap), len = 99;
+    unsigned char *buf = sentinel_buffer(c);
+    const char *s = (const char *)RAW(raw);
+    zuf_status st = zuf_base64_decode(s, s + XLENGTH(raw), buf, c, &len,
+                                      (uint32_t)Rf_asInteger(flags));
+    return decode_result(st, len, buf, c);
+}
+
+/* c(encode_bound(n), decode_bound(n)) */
+SEXP zufast_test_base64_bounds(SEXP n)
+{
+    size_t k = (size_t)Rf_asReal(n);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, 2));
+    REAL(out)[0] = (double)zuf_base64_encode_bound(k);
+    REAL(out)[1] = (double)zuf_base64_decode_bound(k);
+    UNPROTECT(1);
+    return out;
+}
+
+/* list(status, consumed, bytes) */
+SEXP zufast_test_parse_uuid(SEXP raw)
+{
+    const char *s = (const char *)RAW(raw);
+    zuf_uuid u;
+    zuf_result r;
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, 3));
+    SEXP bytes = PROTECT(Rf_allocVector(RAWSXP, 16));
+    memset(u.bytes, 0, 16);
+    r = zuf_parse_uuid(s, s + XLENGTH(raw), &u);
+    memcpy(RAW(bytes), u.bytes, 16);
+    SET_VECTOR_ELT(out, 0, Rf_ScalarInteger((int)r.status));
+    SET_VECTOR_ELT(out, 1, Rf_ScalarInteger((int)(r.ptr - s)));
+    SET_VECTOR_ELT(out, 2, bytes);
+    UNPROTECT(2);
+    return out;
+}
+
+SEXP zufast_test_format_uuid(SEXP raw, SEXP cap, SEXP upper)
+{
+    size_t c = (size_t)Rf_asReal(cap);
+    unsigned char *buf = sentinel_buffer(c);
+    zuf_uuid u;
+    size_t r;
+    memcpy(u.bytes, RAW(raw), 16);
+    r = zuf_format_uuid((char *)buf, c, &u, Rf_asLogical(upper));
+    return encode_result(r, buf, c);
+}

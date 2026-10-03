@@ -17,5 +17,8 @@
 #include "zufast/literal.h"
 #include "zufast/bits.h"
 #include "zufast/utf8.h"
+#include "zufast/hex.h"
+#include "zufast/base64.h"
+#include "zufast/uuid.h"
 
 #endif /* ZUFAST_H */
