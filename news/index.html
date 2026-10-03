@@ -47,6 +47,9 @@
 <code>zufast/hex.h</code>, <code>zufast/base64.h</code> and <code>zufast/uuid.h</code>: hex and strict Base64 (standard and URL alphabets, optional padding) codecs and UUID parsing and formatting; <code><a href="../reference/fast_hex_encode.html">fast_hex_encode()</a></code>, <code><a href="../reference/fast_hex_encode.html">fast_hex_decode()</a></code>, <code><a href="../reference/fast_base64_encode.html">fast_base64_encode()</a></code> and <code><a href="../reference/fast_base64_encode.html">fast_base64_decode()</a></code>.</li>
 <li>
 <code>zufast/datetime.h</code>: ISO 8601 / RFC 3339 date and timestamp parsing to fields, Neri-Schneider calendar arithmetic exact over the whole <code>int32_t</code> day range, and RFC 3339 formatting; <code><a href="../reference/fast_parse_date.html">fast_parse_date()</a></code>, <code><a href="../reference/fast_parse_date.html">fast_parse_datetime()</a></code>, <code><a href="../reference/fast_parse_date.html">fast_datetime_fields()</a></code> and <code><a href="../reference/fast_format_datetime.html">fast_format_datetime()</a></code>.</li>
+<li>
+<code>zufast/number.h</code>: correctly rounded parsing of <code>double</code>, <code>float</code> and 32/64-bit integers in any base 2 to 36 through the vendored <code>ffc.h</code> (v26.09.01), with JSON, leading-plus, whitespace and decimal-point options; exact fixed-notation formatting; integer writers. <code><a href="../reference/fast_parse_double.html">fast_parse_double()</a></code> and <code><a href="../reference/fast_parse_double.html">fast_parse_integer()</a></code>.</li>
+<li>Vendoring tooling: <code>tools/vendor/{fetch,record,verify}</code>, the manifest and checksums, and <code>tools/run-parse-corpus</code>.</li>
 </ul></div>
   </main></div>
 

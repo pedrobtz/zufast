@@ -16,5 +16,8 @@
   [`fast_parse_datetime()`](https://pedrobtz.github.io/zufast/reference/fast_parse_date.md)
   [`fast_datetime_fields()`](https://pedrobtz.github.io/zufast/reference/fast_parse_date.md)
   : Parse ISO 8601 / RFC 3339 dates and timestamps
+- [`fast_parse_double()`](https://pedrobtz.github.io/zufast/reference/fast_parse_double.md)
+  [`fast_parse_integer()`](https://pedrobtz.github.io/zufast/reference/fast_parse_double.md)
+  : Parse numbers
 - [`fast_utf8_valid()`](https://pedrobtz.github.io/zufast/reference/fast_utf8_valid.md)
   : Validate UTF-8
