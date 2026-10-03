@@ -8,9 +8,20 @@
 
 /* zufast_r.c */
 SEXP zufast_info(void);
+SEXP zufast_utf8_valid(SEXP x);
 
 /* zufast_test.c */
 SEXP zufast_test_status_string(SEXP status);
 SEXP zufast_test_mul128(SEXP a, SEXP b);
+SEXP zufast_test_parse_bool(SEXP x, SEXP accept);
+SEXP zufast_test_equals(SEXP x, SEXP lit, SEXP ci);
+SEXP zufast_test_trim(SEXP x);
+SEXP zufast_test_half_decode(SEXP bits, SEXP kind);
+SEXP zufast_test_half_encode(SEXP x, SEXP kind);
+SEXP zufast_test_half_encode_bits(SEXP bits, SEXP kind);
+SEXP zufast_test_fits(SEXP x, SEXP width);
+SEXP zufast_test_endian(SEXP raw, SEXP offset);
+SEXP zufast_test_utf8_exhaustive(void);
+SEXP zufast_test_utf8_count(SEXP raw);
 
 #endif

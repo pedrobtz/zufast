@@ -14,5 +14,8 @@
 
 #include "zufast/version.h"
 #include "zufast/status.h"
+#include "zufast/literal.h"
+#include "zufast/bits.h"
+#include "zufast/utf8.h"
 
 #endif /* ZUFAST_H */
