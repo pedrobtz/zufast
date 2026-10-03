@@ -19,6 +19,9 @@ exported_symbols <- function(path) {
 test_that("the shared object exports exactly R_init_zufast", {
   skip_on_cran()
   skip_on_os("windows")
+  # covr links the gcov runtime into the shared object, which exports its own
+  # symbols.
+  skip_if(nzchar(Sys.getenv("R_COVR")), "coverage build")
   skip_if(!nzchar(Sys.which("nm")), "nm not available")
   path <- getLoadedDLLs()[["zufast"]][["path"]]
   syms <- exported_symbols(path)
