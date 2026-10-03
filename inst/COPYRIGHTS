@@ -1,0 +1,14 @@
+zufast is distributed under the MIT licence (see LICENSE). It includes code
+from the following upstream authors, each under its own licence. zufast is a
+header-only library: the installed headers under include/zufast/ carry this
+code, zufast.so is compiled from it, and every package that uses
+`LinkingTo: zufast` compiles the same code into its own shared object.
+
+------------------------------------------------------------------------------
+include/zufast/utf8.h -- UTF-8 decoder state table
+
+  Transcribed from "Flexible and Economical UTF-8 Decoder",
+  http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
+
+  Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+  Licence: MIT. The full notice is reproduced in the header.

@@ -22,3 +22,23 @@ SEXP zufast_info(void)
     UNPROTECT(1);
     return out;
 }
+
+/* fast_utf8_valid(): character -> logical per element (NA for NA); raw ->
+   a single logical for the whole vector. */
+SEXP zufast_utf8_valid(SEXP x)
+{
+    if (TYPEOF(x) == RAWSXP)
+        return Rf_ScalarLogical(zuf_utf8_valid((const char *)RAW(x), (size_t)XLENGTH(x)));
+    {
+        R_xlen_t i, n = XLENGTH(x);
+        SEXP out = PROTECT(Rf_allocVector(LGLSXP, n));
+        int *o = LOGICAL(out);
+        for (i = 0; i < n; i++) {
+            SEXP s = STRING_ELT(x, i);
+            o[i] = s == NA_STRING ? NA_LOGICAL
+                                  : (int)zuf_utf8_valid(CHAR(s), (size_t)LENGTH(s));
+        }
+        UNPROTECT(1);
+        return out;
+    }
+}

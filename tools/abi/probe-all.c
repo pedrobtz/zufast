@@ -18,5 +18,43 @@ int zuf_probe_all(void)
     acc += (int)zuf_status_string(r.status)[0];
     acc += (int)zuf_status_string(ZUF_ERR_NO_SPACE)[0];
 
+    /* literal.h */
+    {
+        static const char text[] = " TRUE ";
+        const char *f = text, *l = text + 6;
+        bool b = false;
+        zuf_trim_space(&f, &l);
+        acc += (int)zuf_parse_bool(f, l, ZUF_BOOL_R | ZUF_BOOL_DIGIT | ZUF_BOOL_YESNO, &b).status;
+        acc += b;
+        acc += zuf_equals(f, l, "TRUE", 4);
+        acc += zuf_equals_ci(f, l, "true", 4);
+        acc += (int)(zuf_skip_space(text, text + 6) - text);
+        acc += ZUF_BOOL_YAML12;
+    }
+
+    /* bits.h */
+    {
+        unsigned char buf[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+        acc += (int)zuf_f16_to_f32(zuf_f32_to_f16(1.5f));
+        acc += (int)zuf_bf16_to_f32(zuf_f32_to_bf16(2.5f));
+        acc += zuf_f32_fits_f16(0.5f) + zuf_f64_fits_f32(0.25);
+        acc += (int)(zuf_load_le16(buf) + zuf_load_be16(buf));
+        acc += (int)(zuf_load_le32(buf) + zuf_load_be32(buf));
+        acc += (int)(zuf_load_le64(buf) + zuf_load_be64(buf));
+        zuf_store_le16(buf, 1); zuf_store_be16(buf, 2);
+        zuf_store_le32(buf, 3); zuf_store_be32(buf, 4);
+        zuf_store_le64(buf, 5); zuf_store_be64(buf, 6);
+        acc += (int)(zuf_bswap16(1) + zuf_bswap32(2) + zuf_bswap64(3));
+        acc += buf[7];
+    }
+
+    /* utf8.h */
+    {
+        bool valid = false;
+        acc += zuf_utf8_valid("abc", 3);
+        acc += (int)zuf_utf8_count("abc", 3, &valid);
+        acc += valid;
+    }
+
     return acc;
 }
