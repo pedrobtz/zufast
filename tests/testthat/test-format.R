@@ -2,8 +2,10 @@ test_that("ECMAScript notation, design 9.1", {
   expect_identical(fast_format_double(c(1, 0.1, 0.1 + 0.2, 1e21, 1e-7, 1e-6, 1e20, 123.456)),
                    c("1", "0.1", "0.30000000000000004", "1e+21", "1e-7", "0.000001",
                      "100000000000000000000", "123.456"))
-  expect_identical(fast_format_double(c(123456789012345680000, 1.5e300, 5e-324,
-                                        .Machine$double.xmax, 2^53, 1 / 3)),
+  # inputs via fast_parse_double(): R's literal parser is not correctly
+  # rounded on every platform (design 8.4)
+  expect_identical(fast_format_double(c(fast_parse_double(c("123456789012345680000", "1.5e300")),
+                                        5e-324, .Machine$double.xmax, 2^53, 1 / 3)),
                    c("123456789012345680000", "1.5e+300", "5e-324",
                      "1.7976931348623157e+308", "9007199254740992", "0.3333333333333333"))
   expect_identical(fast_format_double(c(-0, 0, NaN, Inf, -Inf, NA, -1.5)),
@@ -45,11 +47,12 @@ test_that("format then parse is the identity, bit for bit, over every exponent",
 })
 
 test_that("the longest outputs fit the MAX_CHARS capacities", {
-  expect_identical(nchar(fmt(-0.000001234567890123456)), 24L)
-  expect_identical(nchar(fmt(-1.2345678901234567e-6)), 25L)
-  expect_identical(nchar(fmt(-1.7976931348623157e308)), 24L)
-  expect_identical(nchar(fmt(-9.87654321e20, TRAIL)), 24L)
-  expect_identical(nchar(fmt(-9.87654321e20, TRAIL, kind = 1L)), 24L)
+  p <- fast_parse_double   # not R literals, see above
+  expect_identical(nchar(fmt(p("-0.000001234567890123456"))), 24L)
+  expect_identical(nchar(fmt(p("-1.2345678901234567e-6"))), 25L)
+  expect_identical(nchar(fmt(-.Machine$double.xmax)), 24L)
+  expect_identical(nchar(fmt(p("-9.87654321e20"), TRAIL)), 24L)
+  expect_identical(nchar(fmt(p("-9.87654321e20"), TRAIL, kind = 1L)), 24L)
   expect_identical(fmt(-1.17549435e-38, 0L, kind = 1L), "-1.1754944e-38")
 })
 
