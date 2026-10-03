@@ -1,4 +1,4 @@
-# zufast (development version)
+# zufast 0.1.0
 
 * Header-only foundation: `<zufast.h>`, `zufast/version.h` and
   `zufast/status.h`, consumed through `LinkingTo: zufast` alone.
