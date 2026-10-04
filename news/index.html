@@ -41,6 +41,16 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="zufast-development-version">zufast (development version)<a class="anchor" aria-label="anchor" href="#zufast-development-version"></a></h2>
 <ul><li>
+<code>zuf_base64_encode()</code> with <code>ZUF_B64_NO_PAD</code> returns <code>SIZE_MAX</code> when the encoded length does not fit a <code>size_t</code>, as the padded form does; before, the length wrapped and a measuring call could write through <code>NULL</code> (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
+<li>
+<code>ZUF_NUM_JSON</code> now applies to the integer parsers: a leading zero, a leading <code>+</code> (even with <code>ZUF_NUM_LEADING_PLUS</code>) and any base other than 10 are <code>ZUF_ERR_INVALID</code>, as for floating point (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
+<li>The floating-point parsers no longer consume a <code>nan(...)</code> payload, which the documented grammar excludes: the number ends after <code>nan</code>, so <code>fast_parse_double("nan(1)")</code> is <code>NA</code> (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
+<li>
+<code>zuf_hasher</code> is a union holding a real XXH3 state object, so xxHash’s typed accesses no longer rely on reading a character array as another type. Its size (640 bytes) and alignment (64) are unchanged (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
+<li>
+<code><a href="../reference/fast_hex_encode.html">fast_hex_encode()</a></code> and <code><a href="../reference/fast_base64_encode.html">fast_base64_encode()</a></code> raise an error when the result would exceed R’s string length limit, before allocating (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
+<li>The header gate’s no-int128 check builds the vendored portable multiplies (by undefining <code>__SIZEOF_INT128__</code>) and requires them to match the native ones; the old <code>-DZUF_NO_INT128</code> build selected nothing (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
+<li>
 <code>zuf_parse_bool()</code> dispatches on the first byte instead of scanning every spelling (about 6x faster on mixed cells); the longest-match rule is unchanged.</li>
 <li>
 <code>zuf_base64_decode()</code> reads its input once (about 2x faster). It and <code>zuf_hex_decode()</code> now share one error contract: a byte outside the alphabet takes precedence over every other error (so <code>zuf_hex_decode()</code> reports <code>ZUF_ERR_INVALID</code>, not <code>ZUF_ERR_NO_SPACE</code>, for a short buffer and bad input), <code>ZUF_ERR_NO_SPACE</code> writes nothing, and on <code>ZUF_ERR_INVALID</code> the output may have been partly written.</li>

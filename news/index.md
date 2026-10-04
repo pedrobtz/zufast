@@ -2,6 +2,32 @@
 
 ## zufast (development version)
 
+- `zuf_base64_encode()` with `ZUF_B64_NO_PAD` returns `SIZE_MAX` when
+  the encoded length does not fit a `size_t`, as the padded form does;
+  before, the length wrapped and a measuring call could write through
+  `NULL` ([\#21](https://github.com/pedrobtz/zufast/issues/21)).
+- `ZUF_NUM_JSON` now applies to the integer parsers: a leading zero, a
+  leading `+` (even with `ZUF_NUM_LEADING_PLUS`) and any base other than
+  10 are `ZUF_ERR_INVALID`, as for floating point
+  ([\#21](https://github.com/pedrobtz/zufast/issues/21)).
+- The floating-point parsers no longer consume a `nan(...)` payload,
+  which the documented grammar excludes: the number ends after `nan`, so
+  `fast_parse_double("nan(1)")` is `NA`
+  ([\#21](https://github.com/pedrobtz/zufast/issues/21)).
+- `zuf_hasher` is a union holding a real XXH3 state object, so xxHash’s
+  typed accesses no longer rely on reading a character array as another
+  type. Its size (640 bytes) and alignment (64) are unchanged
+  ([\#21](https://github.com/pedrobtz/zufast/issues/21)).
+- [`fast_hex_encode()`](https://pedrobtz.github.io/zufast/reference/fast_hex_encode.md)
+  and
+  [`fast_base64_encode()`](https://pedrobtz.github.io/zufast/reference/fast_base64_encode.md)
+  raise an error when the result would exceed R’s string length limit,
+  before allocating
+  ([\#21](https://github.com/pedrobtz/zufast/issues/21)).
+- The header gate’s no-int128 check builds the vendored portable
+  multiplies (by undefining `__SIZEOF_INT128__`) and requires them to
+  match the native ones; the old `-DZUF_NO_INT128` build selected
+  nothing ([\#21](https://github.com/pedrobtz/zufast/issues/21)).
 - `zuf_parse_bool()` dispatches on the first byte instead of scanning
   every spelling (about 6x faster on mixed cells); the longest-match
   rule is unchanged.
