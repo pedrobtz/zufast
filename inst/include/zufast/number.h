@@ -9,8 +9,15 @@
  * The default grammar is fast_float's `general`: an optional '-', digits
  * with an optional '.' and fraction, an optional exponent; "nan", "inf" and
  * "infinity" in any case, with a sign. No leading '+', no leading
- * whitespace, no hex floats, no "nan(...)" payloads. Integers: an optional
- * '-' for signed types, then digits in the base, no prefix.
+ * whitespace, no hex floats, no "nan(...)" payloads: on "nan(1)" the
+ * number is "nan" and r.ptr points at the '('. Integers: an optional '-'
+ * for signed types, then digits in the base, no prefix.
+ *
+ * ZUF_NUM_JSON selects RFC 8259's grammar for every type, and takes
+ * precedence over ZUF_NUM_LEADING_PLUS: no '+', no leading zero ("0" and
+ * "-0" are fine, "01" is ZUF_ERR_INVALID), and for floating point no "1."
+ * or ".5", a digit after 'e', no inf or nan. An integer under JSON is
+ * decimal: any base other than 10 (or 0) is ZUF_ERR_INVALID.
  *
  * Results are correctly rounded: the nearest double (float) to the decimal
  * value, ties to even, on every platform and in every FPU rounding mode.

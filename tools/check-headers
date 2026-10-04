@@ -6,7 +6,9 @@
 #   2. a unit that includes <zufast.h> and uses nothing is warning-free
 #      (the unused-function check of design 4.5);
 #   3. a unit that calls every public function is warning-free, as C and C++;
-#   4. the installed headers mention no R API, and vendor identifiers appear
+#   4. the vendored fallbacks for compilers without __int128 compute what the
+#      native 128-bit paths do (tools/abi/probe-int128.c);
+#   5. the installed headers mention no R API, and vendor identifiers appear
 #      only under vendor/ and detail/.
 #
 # CC and CXX select the compilers (default cc and c++).
@@ -46,7 +48,45 @@ for probe in tools/abi/probe-none.c tools/abi/probe-all.c; do
         if ! compile_c "$probe" $opt; then echo "FAIL C99 $opt: $probe"; fail=1; fi
         if ! compile_cxx "$probe" $opt; then echo "FAIL C++11 $opt: $probe"; fail=1; fi
     done
-    if ! compile_c "$probe" -O2 -DZUF_NO_INT128; then echo "FAIL C99 no-int128: $probe"; fail=1; fi
+done
+
+# The vendored libraries choose their 128-bit multiplies on __SIZEOF_INT128__
+# alone, so undefining it compiles their portable fallbacks. Check that it
+# does (the fallback unit has no __uint128_t left), then that both builds
+# print the same digest and round-trip their own output.
+echo "== no-int128 fallback"
+probe=tools/abi/probe-int128.c
+NOI128=-U__SIZEOF_INT128__
+# Count __uint128_t in the lines the zufast headers contribute to a
+# preprocessed unit (system headers may use it too: Darwin's arm64 thread
+# state does), following the line markers.
+zufast_int128_uses() {
+    printf '#include <zufast.h>\n' > "$TMP/pp.c"
+    $CC -std=c99 "$@" -I"$INC" -E "$TMP/pp.c" > "$TMP/pp.i"
+    awk '/^# *[0-9]+ "/ { f = $0; next } f ~ /zufast/ && /__uint128_t/ { n++ } END { print n + 0 }' "$TMP/pp.i"
+}
+if [ "$(zufast_int128_uses)" -eq 0 ]; then
+    echo "FAIL native build uses no __uint128_t: the differential would compare a fallback with itself"; fail=1
+fi
+if [ "$(zufast_int128_uses $NOI128)" -ne 0 ]; then
+    echo "FAIL $NOI128 leaves __uint128_t in use"; fail=1
+fi
+for opt in -O0 -O2; do
+    for lang in c cxx; do
+        if [ $lang = c ]; then build=compile_c; else build=compile_cxx; fi
+        # compile_c / compile_cxx write $TMP/out.o; link each build apart
+        if $build $probe $opt -DZUF_PROBE_EXPECT_INT128=1 && mv "$TMP/out.o" "$TMP/native.o" &&
+           $build $probe $opt -DZUF_PROBE_EXPECT_INT128=0 $NOI128 && mv "$TMP/out.o" "$TMP/fallback.o"; then
+            if [ $lang = c ]; then link=$CC; else link=$CXX; fi
+            $link "$TMP/native.o" -o "$TMP/native" && $link "$TMP/fallback.o" -o "$TMP/fallback" || {
+                echo "FAIL link no-int128 $lang $opt"; fail=1; continue; }
+            a=$("$TMP/native") || { echo "FAIL native probe $lang $opt"; fail=1; }
+            b=$("$TMP/fallback") || { echo "FAIL fallback probe $lang $opt"; fail=1; }
+            if [ "$a" != "$b" ]; then echo "FAIL no-int128 $lang $opt: $a != $b"; fail=1; fi
+        else
+            echo "FAIL compile no-int128 $lang $opt"; fail=1
+        fi
+    done
 done
 
 echo "== forbidden identifiers"
