@@ -24,9 +24,9 @@ compiler.
 
 str(fast_info())
 #> List of 6
-#>  $ version      : chr "0.0.0"
+#>  $ version      : chr "0.1.0"
 #>  $ version_major: int 0
-#>  $ version_minor: int 0
+#>  $ version_minor: int 1
 #>  $ version_patch: int 0
 #>  $ compiler     : chr "gcc 13.3.0"
 #>  $ vendored     : Named chr [1:3] "26.09.01" "v2.0" "0.8.4"

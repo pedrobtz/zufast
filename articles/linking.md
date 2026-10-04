@@ -83,7 +83,7 @@ zufast’s own copy of the headers reports itself from R:
 
 fast_info()[c("version", "vendored")]
 #> $version
-#> [1] "0.0.0"
+#> [1] "0.1.0"
 #> 
 #> $vendored
 #>        ffc        ryu     xxhash 
