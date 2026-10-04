@@ -2,6 +2,9 @@
 #ifndef ZUFAST_R_H
 #define ZUFAST_R_H
 
+#include <stddef.h>
+#include <stdint.h>
+
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
@@ -20,6 +23,7 @@ SEXP zufast_parse_double(SEXP x);
 SEXP zufast_parse_integer(SEXP x);
 SEXP zufast_format_double(SEXP x, SEXP flags);
 SEXP zufast_hash(SEXP x, SEXP bits, SEXP seed);
+size_t zufast_encoded_len(size_t n, int kind, uint32_t flags);
 
 /* zufast_test.c */
 SEXP zufast_test_status_string(SEXP status);
@@ -38,6 +42,8 @@ SEXP zufast_test_hex_decode(SEXP raw, SEXP cap);
 SEXP zufast_test_base64_encode(SEXP raw, SEXP cap, SEXP flags);
 SEXP zufast_test_base64_decode(SEXP raw, SEXP cap, SEXP flags);
 SEXP zufast_test_base64_bounds(SEXP n);
+SEXP zufast_test_base64_limits(void);
+SEXP zufast_test_encoded_len(SEXP n, SEXP kind, SEXP flags);
 SEXP zufast_test_parse_uuid(SEXP raw);
 SEXP zufast_test_format_uuid(SEXP raw, SEXP cap, SEXP upper);
 SEXP zufast_test_parse_datetime(SEXP raw, SEXP date_only);

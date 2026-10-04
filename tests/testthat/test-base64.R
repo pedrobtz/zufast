@@ -62,6 +62,26 @@ test_that("the bounds hold", {
   }
 })
 
+test_that("encoded lengths that overflow size_t are SIZE_MAX, padded or not", {
+  # measuring calls with NULL buffers at the edge of size_t: each must
+  # return the sentinel (or the exact length) before the write loop
+  expect_true(all(.Call(zufast_test_base64_limits)))
+})
+
+test_that("the R encoders refuse results longer than an R string, before allocating", {
+  len <- function(n, kind, flags = 0L) .Call(zufast_test_encoded_len, n, kind, flags)
+  expect_identical(len(3, 1L), 4)
+  expect_identical(len(4, 1L, NO_PAD), 6)
+  expect_identical(len(5, 0L), 10)
+  # the largest inputs whose encodings fit INT_MAX bytes, and one more
+  expect_identical(len(1610612735, 1L, NO_PAD), 2147483647)
+  expect_error(len(1610612736, 1L, NO_PAD), "string length limit")
+  expect_identical(len(1610612733, 1L), 2147483644)
+  expect_error(len(1610612734, 1L), "string length limit")
+  expect_identical(len(1073741823, 0L), 2147483646)
+  expect_error(len(1073741824, 0L), "string length limit")
+})
+
 test_that("the decoder rejects every malformed class with the right status", {
   INVALID <- 1L; INCOMPLETE <- 3L; NO_SPACE <- 4L
   st <- function(s, flags = 0L) b64_dec(s, flags = flags)[[1]]

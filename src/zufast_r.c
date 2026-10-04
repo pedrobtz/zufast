@@ -1,4 +1,5 @@
 /* The .Call wrappers behind R/. They include <zufast.h> like any consumer. */
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -113,12 +114,23 @@ SEXP zufast_utf8_valid(SEXP x)
     }
 }
 
+/* The encoded length of n bytes, or an R error when the result would not
+   fit an R string (at most INT_MAX bytes), before anything is allocated or
+   encoded. Measuring reads no input, so src may be NULL. */
+size_t zufast_encoded_len(size_t n, int kind, uint32_t flags)
+{
+    size_t need = kind == 0 ? zuf_hex_encode(NULL, n, NULL, 0, flags != 0)
+                            : zuf_base64_encode(NULL, n, NULL, 0, flags);
+    if (need == SIZE_MAX || need > (size_t)INT_MAX)
+        Rf_error("the encoding of %.0f bytes exceeds R's string length limit", (double)n);
+    return need;
+}
+
 /* Encode raw -> one string, or each element of a character vector. `kind`
    0 hex (flags: upper), 1 base64 (flags: ZUF_B64_*). */
 static SEXP encode_one(const char *src, size_t n, int kind, uint32_t flags)
 {
-    size_t need = kind == 0 ? zuf_hex_encode(src, n, NULL, 0, flags != 0)
-                            : zuf_base64_encode(src, n, NULL, 0, flags);
+    size_t need = zufast_encoded_len(n, kind, flags);
     char *buf = R_alloc(need + 1, 1);
     if (kind == 0) zuf_hex_encode(src, n, buf, need, flags != 0);
     else zuf_base64_encode(src, n, buf, need, flags);

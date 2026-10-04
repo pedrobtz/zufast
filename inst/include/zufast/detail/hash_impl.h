@@ -14,11 +14,8 @@
 
 ZUF_STATIC_ASSERT(sizeof(XXH3_state_t) <= ZUF_INT_HASHER_SIZE, hash_state_fits);
 
-/* The hasher's bytes are used as an XXH3_state_t, the aligned-storage
-   pattern. xxHash accesses them only through XXH3_state_t lvalues, and
-   zufast and its callers only through unsigned char, which may alias
-   anything, so type-based alias analysis has no pair of accesses it may
-   reorder. */
+/* The type of zuf_hasher's state member, under a name a public header may
+   use. */
 typedef XXH3_state_t zuf_int_xxh3_state;
 
 ZUF_INLINE uint64_t zuf_int_xxh3_64(const void *data, size_t n, uint64_t seed)
@@ -33,26 +30,25 @@ ZUF_INLINE void zuf_int_xxh3_128(const void *data, size_t n, uint64_t seed, uint
     *high = h.high64;
 }
 
-ZUF_INLINE void zuf_int_xxh3_init(void *state, uint64_t seed)
+ZUF_INLINE void zuf_int_xxh3_init(zuf_int_xxh3_state *state, uint64_t seed)
 {
-    zuf_int_xxh3_state *s = (zuf_int_xxh3_state *)state;
-    XXH3_INITSTATE(s);
-    (void)XXH3_64bits_reset_withSeed(s, seed);
+    XXH3_INITSTATE(state);
+    (void)XXH3_64bits_reset_withSeed(state, seed);
 }
 
-ZUF_INLINE void zuf_int_xxh3_update(void *state, const void *data, size_t n)
+ZUF_INLINE void zuf_int_xxh3_update(zuf_int_xxh3_state *state, const void *data, size_t n)
 {
-    (void)XXH3_64bits_update((zuf_int_xxh3_state *)state, data, n);
+    (void)XXH3_64bits_update(state, data, n);
 }
 
-ZUF_INLINE uint64_t zuf_int_xxh3_digest64(const void *state)
+ZUF_INLINE uint64_t zuf_int_xxh3_digest64(const zuf_int_xxh3_state *state)
 {
-    return XXH3_64bits_digest((const zuf_int_xxh3_state *)state);
+    return XXH3_64bits_digest(state);
 }
 
-ZUF_INLINE void zuf_int_xxh3_digest128(const void *state, uint64_t *low, uint64_t *high)
+ZUF_INLINE void zuf_int_xxh3_digest128(const zuf_int_xxh3_state *state, uint64_t *low, uint64_t *high)
 {
-    XXH128_hash_t h = XXH3_128bits_digest((const zuf_int_xxh3_state *)state);
+    XXH128_hash_t h = XXH3_128bits_digest(state);
     *low = h.low64;
     *high = h.high64;
 }

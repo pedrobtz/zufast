@@ -35,6 +35,8 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_test_base64_encode, 3),
     CALLDEF(zufast_test_base64_decode, 3),
     CALLDEF(zufast_test_base64_bounds, 1),
+    CALLDEF(zufast_test_base64_limits, 0),
+    CALLDEF(zufast_test_encoded_len, 3),
     CALLDEF(zufast_test_parse_uuid, 1),
     CALLDEF(zufast_test_format_uuid, 3),
     CALLDEF(zufast_test_parse_datetime, 2),

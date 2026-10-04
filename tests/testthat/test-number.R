@@ -69,6 +69,49 @@ test_that("options: JSON, leading plus, whitespace, decimal point", {
   expect_identical(pn("-0.5e+10", flags = JSON), list(OK, 8L, -0.5e10))
 })
 
+test_that("JSON applies to integers: no '+', no leading zero, decimal only", {
+  for (k in 2:5) {
+    for (s in c("01", "00", "+1", "007")) {
+      expect_identical(pn(s, k, JSON)[1:2], list(INVALID, 0L), label = paste(k, s))
+      expect_identical(pn(s, k, JSON + PLUS)[1:2], list(INVALID, 0L), label = paste(k, s, "+PLUS"))
+      expect_identical(pn(paste0("  ", s), k, JSON + SPACE)[1:2], list(INVALID, 0L), label = paste(k, s, "+SPACE"))
+    }
+    expect_identical(pn("0", k, JSON), list(OK, 1L, "0"))
+    expect_identical(pn("10", k, JSON), list(OK, 2L, "10"))
+    expect_identical(pn("0.5", k, JSON), list(OK, 1L, "0"))
+    expect_identical(pn(" 7", k, JSON + SPACE), list(OK, 2L, "7"))
+    expect_identical(pn("ff", k, JSON, base = 16L)[1:2], list(INVALID, 0L))
+    expect_identical(pn("12", k, JSON, base = 0L), list(OK, 2L, "12"))
+    # without JSON the same inputs are fine
+    expect_identical(pn("01", k), list(OK, 2L, "1"))
+    expect_identical(pn("+1", k, PLUS), list(OK, 2L, "1"))
+  }
+  for (k in c(2L, 4L)) {
+    expect_identical(pn("-0", k, JSON), list(OK, 2L, "0"))
+    expect_identical(pn("-12", k, JSON), list(OK, 3L, "-12"))
+    expect_identical(pn("-01", k, JSON)[1:2], list(INVALID, 0L))
+    expect_identical(pn("  -01", k, JSON + SPACE)[1:2], list(INVALID, 0L))
+  }
+  # floating point already behaved so, PLUS included
+  expect_identical(pn("+1", 0L, JSON + PLUS)[1:2], list(INVALID, 0L))
+  expect_identical(pn("01", 1L, JSON)[1:2], list(INVALID, 0L))
+})
+
+test_that("nan(...) payloads are not part of the number", {
+  for (k in 0:1) {
+    for (s in c("nan(payload)", "NaN(123)", "nan()", "-nan(x)", "nan(")) {
+      r <- pn(s, k)
+      expect_identical(r[[1]], OK, label = s)
+      expect_identical(r[[2]], if (startsWith(s, "-")) 4L else 3L, label = s)
+      expect_true(is.nan(r[[3]]), label = s)
+    }
+    expect_identical(pn("+nan(1)", k, PLUS)[1:2], list(OK, 4L))
+    expect_identical(pn("  nan(1)", k, SPACE)[1:2], list(OK, 5L))
+    expect_identical(pn("nan(1)", k, JSON)[1:2], list(INVALID, 0L))
+  }
+  expect_identical(fast_parse_double(c("nan(payload)", " NaN ", "nan()")), c(NA, NaN, NA))
+})
+
 test_that("integers: every type, bases, saturation on overflow", {
   expect_identical(pn("9223372036854775807", 2L), list(OK, 19L, "9223372036854775807"))
   expect_identical(pn("9223372036854775808", 2L), list(RANGE, 19L, "9223372036854775807"))

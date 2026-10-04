@@ -334,6 +334,37 @@ SEXP zufast_test_base64_bounds(SEXP n)
     return out;
 }
 
+/* The encoder's length arithmetic at the edges of size_t, through measuring
+   calls (src and dst NULL, cap 0), which must return before the write loop.
+   TRUE for each case that returns what it should. */
+SEXP zufast_test_base64_limits(void)
+{
+    const size_t max_ok = (SIZE_MAX / 4) * 3 - 2;  /* the largest n that fits */
+    const size_t max_len = (SIZE_MAX / 4) * 4;     /* its padded length */
+    const size_t wraps = (SIZE_MAX / 4 + 1) * 3;   /* unpadded length wraps to 0 */
+    const size_t over[] = {max_ok + 1, max_ok + 2, max_ok + 3, wraps, SIZE_MAX - 1, SIZE_MAX};
+    const uint32_t flags[] = {0, ZUF_B64_NO_PAD, ZUF_B64_URL | ZUF_B64_NO_PAD};
+    SEXP out = PROTECT(Rf_allocVector(LGLSXP, 3 + 3 * 6));
+    int *o = LOGICAL(out), k = 0;
+    size_t i, j;
+    o[k++] = zuf_base64_encode(NULL, max_ok, NULL, 0, 0) == max_len;
+    o[k++] = zuf_base64_encode(NULL, max_ok, NULL, 0, ZUF_B64_NO_PAD) == max_len - (3 - max_ok % 3) % 3;
+    o[k++] = zuf_base64_encode_bound(max_ok + 1) == SIZE_MAX;
+    for (i = 0; i < 3; i++)
+        for (j = 0; j < 6; j++)
+            o[k++] = zuf_base64_encode(NULL, over[j], NULL, 0, flags[i]) == SIZE_MAX;
+    UNPROTECT(1);
+    return out;
+}
+
+/* zufast_encoded_len() on a length given as a double; an R error when the
+   encoding is too long for an R string. */
+SEXP zufast_test_encoded_len(SEXP n, SEXP kind, SEXP flags)
+{
+    return Rf_ScalarReal((double)zufast_encoded_len((size_t)Rf_asReal(n), Rf_asInteger(kind),
+                                                    (uint32_t)Rf_asInteger(flags)));
+}
+
 /* list(status, consumed, bytes) */
 SEXP zufast_test_parse_uuid(SEXP raw)
 {

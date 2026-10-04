@@ -78,14 +78,19 @@ ZUF_INLINE size_t zuf_base64_encode_bound(size_t n)
     return (n + 2) / 3 * 4;
 }
 
-/* The exact encoded length of n bytes under flags. */
+/* The exact encoded length of n bytes under flags; SIZE_MAX when the
+   padded length does not fit a size_t, whatever the flags, so that one n
+   is either encodable or not under both. The unpadded length is the padded
+   one less the '=' padding, and so cannot wrap. */
 ZUF_INLINE size_t zuf_int_base64_encoded_len(size_t n, uint32_t flags)
 {
-    if (flags & ZUF_B64_NO_PAD) return n / 3 * 4 + (n % 3 ? n % 3 + 1 : 0);
-    return zuf_base64_encode_bound(n);
+    size_t padded = zuf_base64_encode_bound(n);
+    if (padded == SIZE_MAX || !(flags & ZUF_B64_NO_PAD)) return padded;
+    return padded - (3 - n % 3) % 3;
 }
 
-/* Encode n bytes. Returns the encoded length; writes only when it fits. */
+/* Encode n bytes. Returns the encoded length, or SIZE_MAX when it does not
+   fit a size_t; writes only when it fits in cap. */
 ZUF_INLINE size_t zuf_base64_encode(const void *src, size_t n, char *dst, size_t cap, uint32_t flags)
 {
     const unsigned char *s = (const unsigned char *)src;

@@ -669,7 +669,7 @@ zuf_digest128 zuf_hash128_seed(const void *data, size_t n, uint64_t seed);
 /* Streaming. The state is opaque by size, not by type: a consumer can put it on the stack
    without naming a vendor type. A static assertion holds the size and alignment. */
 #define ZUF_HASHER_SIZE  640
-typedef struct { ZUF_ALIGNED(64) unsigned char opaque[ZUF_HASHER_SIZE]; } zuf_hasher;
+typedef union { zuf_int_xxh3_state state; ZUF_ALIGNED(64) unsigned char opaque[ZUF_HASHER_SIZE]; } zuf_hasher;
 
 void        zuf_hasher_init  (zuf_hasher *h, uint64_t seed);
 void        zuf_hasher_update(zuf_hasher *h, const void *data, size_t n);

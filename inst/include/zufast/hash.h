@@ -44,13 +44,20 @@ ZUF_INLINE zuf_digest128 zuf_hash128(const void *data, size_t n)
     return zuf_hash128_seed(data, n, 0);
 }
 
-/* Streaming. The state is opaque by size, not by type, so a consumer can
-   put it on the stack without naming a vendor type. One hasher yields both
-   the 64- and the 128-bit digest of everything passed to update. */
+/* Streaming. The size is fixed at ZUF_HASHER_SIZE, so a consumer can put
+   the hasher on the stack without naming a vendor type; its members are
+   internal. `state` is a real object of XXH3's state type, so xxHash's
+   typed accesses to it are valid under C's effective-type rules; `opaque`
+   only reserves the size and alignment. One hasher yields both the 64- and
+   the 128-bit digest of everything passed to update. */
 #define ZUF_HASHER_SIZE 640
-typedef struct { ZUF_ALIGNED(64) unsigned char opaque[ZUF_HASHER_SIZE]; } zuf_hasher;
+typedef union {
+    zuf_int_xxh3_state state;
+    ZUF_ALIGNED(64) unsigned char opaque[ZUF_HASHER_SIZE];
+} zuf_hasher;
 
 ZUF_STATIC_ASSERT(ZUF_HASHER_SIZE == ZUF_INT_HASHER_SIZE, hash_hasher_size);
+ZUF_STATIC_ASSERT(sizeof(zuf_hasher) == ZUF_HASHER_SIZE, hash_hasher_sizeof);
 /* XXH3's accumulator needs the alignment. ZUF_ALIGNED() is empty on a
    compiler without the GNU attribute, and then this fails to compile
    rather than fault at run time. The offset of a member that follows a
@@ -60,23 +67,23 @@ ZUF_STATIC_ASSERT(offsetof(zuf_int_hasher_align_probe, h) >= ZUF_INT_HASHER_ALIG
 
 ZUF_INLINE void zuf_hasher_init(zuf_hasher *h, uint64_t seed)
 {
-    zuf_int_xxh3_init(h->opaque, seed);
+    zuf_int_xxh3_init(&h->state, seed);
 }
 
 ZUF_INLINE void zuf_hasher_update(zuf_hasher *h, const void *data, size_t n)
 {
-    zuf_int_xxh3_update(h->opaque, data, n);
+    zuf_int_xxh3_update(&h->state, data, n);
 }
 
 ZUF_INLINE uint64_t zuf_hasher_digest64(const zuf_hasher *h)
 {
-    return zuf_int_xxh3_digest64(h->opaque);
+    return zuf_int_xxh3_digest64(&h->state);
 }
 
 ZUF_INLINE zuf_digest128 zuf_hasher_digest128(const zuf_hasher *h)
 {
     zuf_digest128 r;
-    zuf_int_xxh3_digest128(h->opaque, &r.low, &r.high);
+    zuf_int_xxh3_digest128(&h->state, &r.low, &r.high);
     return r;
 }
 
