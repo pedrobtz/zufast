@@ -28,7 +28,7 @@ bool same_bits(T a, T b)
     return std::memcmp(&a, &b, sizeof a) == 0 || (a != a && b != b);
 }
 
-// The one intended divergence (ffc eeb3aa5): in JSON mode an exponent
+// An intended divergence (ffc eeb3aa5): in JSON mode an exponent
 // marker must be followed by digits (RFC 8259), so ffc rejects "1e" and
 // "1.5e+" where fast_float accepts the number before the 'e'.
 bool json_dangling_exponent(zuf_result r, std::errc ec, const char *ptr, const char *e,
@@ -40,14 +40,35 @@ bool json_dangling_exponent(zuf_result r, std::errc ec, const char *ptr, const c
            ptr < e && (*ptr == 'e' || *ptr == 'E');
 }
 
+// The first byte the grammar looks at: past leading space when allowed.
+const char *skip_space(const char *s, const char *e, uint32_t flags)
+{
+    if (flags & ZUF_NUM_SKIP_SPACE)
+        while (s < e && (*s == ' ' || (*s >= '\t' && *s <= '\r'))) s++;
+    return s;
+}
+
+// Intended divergence (#21): zufast's grammar has no "nan(...)" payload, so
+// it ends the number after "nan" where fast_float consumes the payload.
+// Both report OK and NaN.
+bool nan_payload(zuf_result r, std::errc ec, const char *ptr, const char *s, const char *e,
+                 uint32_t flags)
+{
+    const char *p = skip_space(s, e, flags);
+    if (p < e && (*p == '-' || *p == '+')) p++;
+    return r.status == ZUF_OK && ec == std::errc() && r.ptr == p + 3 && ptr > r.ptr &&
+           *r.ptr == '(' && (*p == 'n' || *p == 'N');
+}
+
 // Floating point: on OK and on RANGE both write the value (+-inf or +-0).
 template <typename T>
 void check_float(zuf_result r, T got, const char *s, const char *e,
-                 const fast_float::parse_options &o)
+                 const fast_float::parse_options &o, uint32_t flags)
 {
     T want = 0;
     auto f = fast_float::from_chars_advanced(s, e, want, o);
     if (json_dangling_exponent(r, f.ec, f.ptr, e, o)) return;
+    if (nan_payload(r, f.ec, f.ptr, s, e, flags)) { FUZZ_CHECK(got != got); return; }
     FUZZ_CHECK(r.status == status_of(f.ec));
     FUZZ_CHECK(r.status == ZUF_ERR_INVALID || r.ptr == f.ptr);
     if (r.status != ZUF_ERR_INVALID) FUZZ_CHECK(same_bits(got, want));
@@ -55,11 +76,25 @@ void check_float(zuf_result r, T got, const char *s, const char *e,
 
 // Integers: fast_float leaves the value alone on RANGE; zufast saturates,
 // which test-number.R checks.
+//
+// Intended divergence (#21): fast_float does not apply its JSON grammar to
+// integers, and zufast does: under ZUF_NUM_JSON an integer is decimal, has
+// no '+' and no leading zero, and anything else is INVALID at `first`.
 template <typename T>
 void check_int(zuf_result r, T got, const char *s, const char *e,
-               const fast_float::parse_options &o)
+               const fast_float::parse_options &o, uint32_t flags, int base)
 {
     T want = 0;
+    if (flags & ZUF_NUM_JSON) {
+        const char *p = skip_space(s, e, flags);
+        bool plus = p < e && *p == '+';
+        if (p < e && *p == '-') p++;
+        bool leading_zero = p + 1 < e && p[0] == '0' && p[1] >= '0' && p[1] <= '9';
+        if (base != 10 || plus || leading_zero) {
+            FUZZ_CHECK(r.status == ZUF_ERR_INVALID && r.ptr == s);
+            return;
+        }
+    }
     auto f = fast_float::from_chars_advanced(s, e, want, o);
     FUZZ_CHECK(r.status == status_of(f.ec));
     FUZZ_CHECK(r.status == ZUF_ERR_INVALID || r.ptr == f.ptr);
@@ -91,11 +126,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     uint64_t u64 = 0;
     int32_t i32 = 0;
     uint32_t u32 = 0;
-    check_float(zuf_parse_f64_opt(s, e, &d, &opt), d, s, e, fo);
-    check_float(zuf_parse_f32_opt(s, e, &f, &opt), f, s, e, fo);
-    check_int(zuf_parse_i64_opt(s, e, &i64, &opt), i64, s, e, io);
-    check_int(zuf_parse_u64_opt(s, e, &u64, &opt), u64, s, e, io);
-    check_int(zuf_parse_i32_opt(s, e, &i32, &opt), i32, s, e, io);
-    check_int(zuf_parse_u32_opt(s, e, &u32, &opt), u32, s, e, io);
+    check_float(zuf_parse_f64_opt(s, e, &d, &opt), d, s, e, fo, opt.flags);
+    check_float(zuf_parse_f32_opt(s, e, &f, &opt), f, s, e, fo, opt.flags);
+    check_int(zuf_parse_i64_opt(s, e, &i64, &opt), i64, s, e, io, opt.flags, opt.base);
+    check_int(zuf_parse_u64_opt(s, e, &u64, &opt), u64, s, e, io, opt.flags, opt.base);
+    check_int(zuf_parse_i32_opt(s, e, &i32, &opt), i32, s, e, io, opt.flags, opt.base);
+    check_int(zuf_parse_u32_opt(s, e, &u32, &opt), u32, s, e, io, opt.flags, opt.base);
     return 0;
 }
