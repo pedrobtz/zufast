@@ -26,6 +26,19 @@ The vendored headers are compiled with `-Wpedantic`, `-Wunused-function` and
 `inst/include/zufast/detail/vendor_config.h`, scoped to the vendored files
 only; no diagnostic CRAN treats as important is suppressed.
 
+## Test environments
+
+* GitHub Actions: macOS (R release), Windows (R release), Ubuntu (R release
+  and oldrel-1).
+* CRAN-like containers: r-devel with GCC 16, clang 23, ubuntu-clang; the
+  NOSUGGESTS and NOLD flavors.
+* r-devel under ASan and UBSan (GCC and clang), valgrind, LTO, gctorture,
+  rchk, `-fanalyzer`, and CRAN's rcnst, rlibro and vnu checks.
+* Linux i386 (32-bit), musl (Alpine) and s390x (big-endian).
+* win-builder (R-devel) and the macOS builder: to be run before submission.
+
 ## R CMD check results
 
-0 errors | 0 warnings | 0 notes
+0 errors | 0 warnings | 1 note
+
+* This is a new submission.
