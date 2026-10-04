@@ -23,12 +23,14 @@ compiler.
 ``` r
 
 str(fast_info())
-#> List of 6
+#> List of 7
 #>  $ version      : chr "0.1.0"
 #>  $ version_major: int 0
 #>  $ version_minor: int 1
 #>  $ version_patch: int 0
 #>  $ compiler     : chr "gcc 13.3.0"
+#>  $ build        : Named chr [1:7] "202000" "true" "true" "3" ...
+#>   ..- attr(*, "names")= chr [1:7] "c_standard" "optimized" "ndebug" "fortify_source" ...
 #>  $ vendored     : Named chr [1:3] "26.09.01" "v2.0" "0.8.4"
 #>   ..- attr(*, "names")= chr [1:3] "ffc" "ryu" "xxhash"
 ```

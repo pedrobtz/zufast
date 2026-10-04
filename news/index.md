@@ -1,5 +1,35 @@
 # Changelog
 
+## zufast (development version)
+
+- `zuf_parse_bool()` dispatches on the first byte instead of scanning
+  every spelling (about 6x faster on mixed cells); the longest-match
+  rule is unchanged.
+- `zuf_base64_decode()` reads its input once (about 2x faster). It and
+  `zuf_hex_decode()` now share one error contract: a byte outside the
+  alphabet takes precedence over every other error (so
+  `zuf_hex_decode()` reports `ZUF_ERR_INVALID`, not `ZUF_ERR_NO_SPACE`,
+  for a short buffer and bad input), `ZUF_ERR_NO_SPACE` writes nothing,
+  and on `ZUF_ERR_INVALID` the output may have been partly written.
+- Date parsing validates and decodes `YYYY-MM-` with SWAR on one 8-byte
+  load, and the time and offset fields are checked and decoded in one
+  pass (dates about 1.5x, timestamps about 2x faster).
+- `ZUF_DATETIME_MAX_CHARS` is now 42 and covers every `int32_t` year, as
+  the other `ZUF_*_MAX_CHARS` capacities do.
+- The formatters return before `memcpy()` when `cap == 0`, so measuring
+  with a `NULL` buffer no longer trips `-Wnonnull` under
+  `_FORTIFY_SOURCE`.
+- `zuf_hasher`’s 64-byte alignment is checked by a static assertion, and
+  the public `ZUF_NUM_*` and `ZUF_FMT_*` flags are tied to their
+  internal copies the same way.
+- [`fast_base64_decode()`](https://pedrobtz.github.io/zufast/reference/fast_base64_encode.md)
+  allocates each result once, and
+  [`fast_datetime_fields()`](https://pedrobtz.github.io/zufast/reference/fast_parse_date.md)
+  no longer looks up its columns per element.
+- [`fast_info()`](https://pedrobtz.github.io/zufast/reference/fast_info.md)
+  reports build flags in a new `build` element.
+- Removed the unused internal `zuf_int_mul128()`.
+
 ## zufast 0.1.0
 
 - Header-only foundation: `<zufast.h>`, `zufast/version.h` and
