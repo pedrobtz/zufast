@@ -2,12 +2,17 @@ test_that("fast_info() reports the header version from compiled code", {
   info <- fast_info()
   expect_type(info, "list")
   expect_named(info, c("version", "version_major", "version_minor",
-                       "version_patch", "compiler", "vendored"))
+                       "version_patch", "compiler", "build", "vendored"))
   expect_identical(
     info$version,
     paste(info$version_major, info$version_minor, info$version_patch, sep = ".")
   )
   expect_type(info$compiler, "character")
+  expect_type(info$build, "character")
+  expect_named(info$build, c("c_standard", "optimized", "ndebug", "fortify_source",
+                             "int128", "endian", "simd"))
+  expect_true(info$build[["optimized"]] %in% c("true", "false"))
+  expect_true(info$build[["endian"]] %in% c("little", "big", "unknown"))
 })
 
 test_that("the header version matches DESCRIPTION", {

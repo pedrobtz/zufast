@@ -200,7 +200,12 @@ ZUF_INLINE bool zuf_f32_fits_f16(float v)
     return zuf_int_f32_bits(zuf_f16_to_f32(zuf_f32_to_f16(v))) == zuf_int_f32_bits(v);
 }
 
-/* True when v survives double -> float -> double bit for bit. */
+/* True when v survives double -> float -> double bit for bit.
+   For a NaN that depends on its payload: a quiet NaN whose payload lives in
+   the top 22 fraction bits survives (the default NaN, 0x7FF8000000000000,
+   is true), but R's NA_real_, whose payload 1954 sits in the low bits, is
+   truncated on the way to float and is false, as is a signalling NaN that
+   the conversion quiets. A CBOR writer therefore widens NA to 8 bytes. */
 ZUF_INLINE bool zuf_f64_fits_f32(double v)
 {
     if (v == v && (v > 3.4028234663852886e38 || v < -3.4028234663852886e38)) {

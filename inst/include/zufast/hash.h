@@ -51,6 +51,12 @@ ZUF_INLINE zuf_digest128 zuf_hash128(const void *data, size_t n)
 typedef struct { ZUF_ALIGNED(64) unsigned char opaque[ZUF_HASHER_SIZE]; } zuf_hasher;
 
 ZUF_STATIC_ASSERT(ZUF_HASHER_SIZE == ZUF_INT_HASHER_SIZE, hash_hasher_size);
+/* XXH3's accumulator needs the alignment. ZUF_ALIGNED() is empty on a
+   compiler without the GNU attribute, and then this fails to compile
+   rather than fault at run time. The offset of a member that follows a
+   char is the alignment of its type, in C99 and C++11 alike. */
+typedef struct { char c; zuf_hasher h; } zuf_int_hasher_align_probe;
+ZUF_STATIC_ASSERT(offsetof(zuf_int_hasher_align_probe, h) >= ZUF_INT_HASHER_ALIGN, hash_hasher_align);
 
 ZUF_INLINE void zuf_hasher_init(zuf_hasher *h, uint64_t seed)
 {

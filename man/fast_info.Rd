@@ -9,13 +9,18 @@ fast_info()
 \value{
 A named list with elements \code{version} (a string such as \code{"0.1.0"}),
 \code{version_major}, \code{version_minor}, \code{version_patch} (integers),
-\code{compiler} (a string) and \code{vendored} (a named character vector of
-upstream versions).
+\code{compiler} (a string), \code{build} (a named character vector: \code{c_standard},
+the value of \verb{__STDC_VERSION__}; \code{optimized}, \code{ndebug} and \code{int128},
+each \code{"true"} or \code{"false"}; \code{fortify_source}, the \verb{_FORTIFY_SOURCE}
+level or \code{"0"}; \code{endian}; and \code{simd}, the widest x86 or Arm vector
+extension the compiler targeted) and \code{vendored} (a named character
+vector of upstream versions).
 }
 \description{
 Reports, from compiled code, the version of the zufast headers the
 package's own shared object was built with, the versions of the vendored
-libraries compiled into it, and the compiler that built it.
+libraries compiled into it, and the compiler and build flags that built
+it.
 Consumers that use \code{LinkingTo: zufast} carry their own copy of the code;
 this describes zufast's copy only.
 }

@@ -98,6 +98,14 @@ test_that("the decoder rejects every malformed class with the right status", {
     s <- paste0("AAA", ch)
     expect_identical(st(s) == 0L, ok_std, label = sprintf("byte %d", b))
   }
+  # a foreign byte takes precedence over INCOMPLETE and NO_SPACE
+  expect_identical(st("!"), INVALID)
+  expect_identical(st("Zm9v!"), INVALID)
+  expect_identical(st("Zm!vY"), INVALID)
+  expect_identical(b64_dec("Zm!vYmFy", cap = 5)[[1]], INVALID)
+  expect_identical(b64_dec("Zm9vYmF!", cap = 6)[[1]], INVALID)
+  expect_identical(b64_dec("Zm9vYm!=", cap = 6)[[1]], INVALID)
+  expect_identical(b64_dec("Zm9vYmF!", cap = 6)[[2]], 0)
   # NO_SPACE before anything is written
   res <- b64_dec("Zm9vYmFy", cap = 5)
   expect_identical(res[[1]], NO_SPACE)

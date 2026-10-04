@@ -1,6 +1,6 @@
 Package: zufast
 Title: Fast Portable C Primitives for Parsing and Formatting Data
-Version: 0.1.0
+Version: 0.1.0.9000
 Authors@R: 
     c(person("Pedro", "Z", , "pedrobtz@gmail.com", role = c("aut", "cre")),
       person("Bjoern", "Hoehrmann", role = "cph",

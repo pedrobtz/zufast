@@ -75,45 +75,84 @@ ZUF_INLINE void zuf_trim_space(const char **first, const char **last)
     *last = l;
 }
 
-typedef struct {
-    const char *text;
-    unsigned char len;
-    unsigned char value;
-    unsigned char flag;
-} zuf_int_bool_spelling;
+/* True when [p, p + n) starts with the len bytes at lit. */
+ZUF_INLINE bool zuf_int_has_prefix(const char *p, size_t n, const char *lit, size_t len)
+{
+    return n >= len && memcmp(p, lit, len) == 0;
+}
 
-/* Parse a boolean spelled in one of the families selected by `accept`. */
+/* Parse a boolean spelled in one of the families selected by `accept`.
+   Dispatch is on the first byte; within it the spellings are tried longest
+   first, so the first hit is the longest match. */
 ZUF_INLINE zuf_result zuf_parse_bool(const char *first, const char *last, uint32_t accept, bool *out)
 {
-    static const zuf_int_bool_spelling spellings[] = {
-        {"true", 4, 1, ZUF_BOOL_LOWER},  {"false", 5, 0, ZUF_BOOL_LOWER},
-        {"TRUE", 4, 1, ZUF_BOOL_UPPER},  {"FALSE", 5, 0, ZUF_BOOL_UPPER},
-        {"True", 4, 1, ZUF_BOOL_TITLE},  {"False", 5, 0, ZUF_BOOL_TITLE},
-        {"T", 1, 1, ZUF_BOOL_LETTER},    {"F", 1, 0, ZUF_BOOL_LETTER},
-        {"t", 1, 1, ZUF_BOOL_LETTER},    {"f", 1, 0, ZUF_BOOL_LETTER},
-        {"1", 1, 1, ZUF_BOOL_DIGIT},     {"0", 1, 0, ZUF_BOOL_DIGIT},
-        {"yes", 3, 1, ZUF_BOOL_YESNO},   {"no", 2, 0, ZUF_BOOL_YESNO},
-        {"Yes", 3, 1, ZUF_BOOL_YESNO},   {"No", 2, 0, ZUF_BOOL_YESNO},
-        {"YES", 3, 1, ZUF_BOOL_YESNO},   {"NO", 2, 0, ZUF_BOOL_YESNO},
-        {"y", 1, 1, ZUF_BOOL_YESNO},     {"n", 1, 0, ZUF_BOOL_YESNO},
-        {"Y", 1, 1, ZUF_BOOL_YESNO},     {"N", 1, 0, ZUF_BOOL_YESNO},
-        {"on", 2, 1, ZUF_BOOL_YESNO},    {"off", 3, 0, ZUF_BOOL_YESNO},
-        {"On", 2, 1, ZUF_BOOL_YESNO},    {"Off", 3, 0, ZUF_BOOL_YESNO},
-        {"ON", 2, 1, ZUF_BOOL_YESNO},    {"OFF", 3, 0, ZUF_BOOL_YESNO}
-    };
-    size_t n = (size_t)(last - first), i, best_len = 0;
-    int best_value = -1;
-    for (i = 0; i < sizeof(spellings) / sizeof(spellings[0]); i++) {
-        const zuf_int_bool_spelling *s = &spellings[i];
-        if ((accept & s->flag) && s->len <= n && s->len > best_len &&
-            memcmp(first, s->text, s->len) == 0) {
-            best_len = s->len;
-            best_value = s->value;
+    size_t n = (size_t)(last - first), len = 0;
+    bool value = false;
+    if (n == 0) return zuf_int_result(first, ZUF_ERR_INVALID);
+    switch (*first) {
+    case 't':
+        value = true;
+        if ((accept & ZUF_BOOL_LOWER) && zuf_int_has_prefix(first, n, "true", 4)) len = 4;
+        else if (accept & ZUF_BOOL_LETTER) len = 1;
+        break;
+    case 'f':
+        if ((accept & ZUF_BOOL_LOWER) && zuf_int_has_prefix(first, n, "false", 5)) len = 5;
+        else if (accept & ZUF_BOOL_LETTER) len = 1;
+        break;
+    case 'T':
+        value = true;
+        if ((accept & ZUF_BOOL_UPPER) && zuf_int_has_prefix(first, n, "TRUE", 4)) len = 4;
+        else if ((accept & ZUF_BOOL_TITLE) && zuf_int_has_prefix(first, n, "True", 4)) len = 4;
+        else if (accept & ZUF_BOOL_LETTER) len = 1;
+        break;
+    case 'F':
+        if ((accept & ZUF_BOOL_UPPER) && zuf_int_has_prefix(first, n, "FALSE", 5)) len = 5;
+        else if ((accept & ZUF_BOOL_TITLE) && zuf_int_has_prefix(first, n, "False", 5)) len = 5;
+        else if (accept & ZUF_BOOL_LETTER) len = 1;
+        break;
+    case '1':
+        value = true;
+        if (accept & ZUF_BOOL_DIGIT) len = 1;
+        break;
+    case '0':
+        if (accept & ZUF_BOOL_DIGIT) len = 1;
+        break;
+    default:
+        if (!(accept & ZUF_BOOL_YESNO)) break;
+        switch (*first) {
+        case 'y':
+            value = true;
+            len = zuf_int_has_prefix(first, n, "yes", 3) ? 3 : 1;
+            break;
+        case 'Y':
+            value = true;
+            len = zuf_int_has_prefix(first, n, "YES", 3) || zuf_int_has_prefix(first, n, "Yes", 3) ? 3 : 1;
+            break;
+        case 'n':
+            len = zuf_int_has_prefix(first, n, "no", 2) ? 2 : 1;
+            break;
+        case 'N':
+            len = zuf_int_has_prefix(first, n, "NO", 2) || zuf_int_has_prefix(first, n, "No", 2) ? 2 : 1;
+            break;
+        case 'o':
+            if (zuf_int_has_prefix(first, n, "off", 3)) len = 3;
+            else if (zuf_int_has_prefix(first, n, "on", 2)) { len = 2; value = true; }
+            break;
+        case 'O':
+            if (zuf_int_has_prefix(first, n, "OFF", 3) || zuf_int_has_prefix(first, n, "Off", 3)) len = 3;
+            else if (zuf_int_has_prefix(first, n, "ON", 2) || zuf_int_has_prefix(first, n, "On", 2)) {
+                len = 2;
+                value = true;
+            }
+            break;
+        default:
+            break;
         }
+        break;
     }
-    if (best_value < 0) return zuf_int_result(first, ZUF_ERR_INVALID);
-    *out = best_value != 0;
-    return zuf_int_result(first + best_len, ZUF_OK);
+    if (len == 0) return zuf_int_result(first, ZUF_ERR_INVALID);
+    *out = value;
+    return zuf_int_result(first + len, ZUF_OK);
 }
 
 #endif /* ZUFAST_LITERAL_H */

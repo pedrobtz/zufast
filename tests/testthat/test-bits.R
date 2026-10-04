@@ -83,6 +83,8 @@ test_that("the fits predicates are exact round trips", {
   expect_identical(fits(c(0.1, 65505, 1 + 2^-11, 2^-25, 1e10), 16L), rep(FALSE, 5))
   expect_identical(fits(c(1, 0.5, Inf, -Inf, -0, 2^-149, NaN), 32L), rep(TRUE, 7))
   expect_identical(fits(c(0.1, 1e39, -1e300, 2^-150, 1 + 2^-30), 32L), rep(FALSE, 5))
+  # NaN payloads: the default NaN survives, NA_real_ (payload 1954) does not
+  expect_identical(fits(c(NaN, NA_real_), 32L), c(TRUE, FALSE))
 })
 
 test_that("loads, stores and swaps agree for every width, order and offset", {

@@ -73,3 +73,38 @@ test_that("zuf_skip_space() and zuf_trim_space() handle every ASCII space", {
   expect_identical(trim(""), c(0L, 0L, 0L))
   expect_identical(trim(rawToChar(as.raw(c(0xc2, 0xa0, 0x78)))), c(0L, 0L, 3L))   # NBSP is not ASCII space
 })
+
+test_that("zuf_parse_bool() agrees with a longest-match scan of the spelling table", {
+  table <- list(
+    list("true", 1L, "LOWER"), list("false", 0L, "LOWER"),
+    list("TRUE", 1L, "UPPER"), list("FALSE", 0L, "UPPER"),
+    list("True", 1L, "TITLE"), list("False", 0L, "TITLE"),
+    list("T", 1L, "LETTER"), list("F", 0L, "LETTER"),
+    list("t", 1L, "LETTER"), list("f", 0L, "LETTER"),
+    list("1", 1L, "DIGIT"), list("0", 0L, "DIGIT"),
+    list("yes", 1L, "YESNO"), list("no", 0L, "YESNO"), list("Yes", 1L, "YESNO"),
+    list("No", 0L, "YESNO"), list("YES", 1L, "YESNO"), list("NO", 0L, "YESNO"),
+    list("y", 1L, "YESNO"), list("n", 0L, "YESNO"), list("Y", 1L, "YESNO"),
+    list("N", 0L, "YESNO"), list("on", 1L, "YESNO"), list("off", 0L, "YESNO"),
+    list("On", 1L, "YESNO"), list("Off", 0L, "YESNO"), list("ON", 1L, "YESNO"),
+    list("OFF", 0L, "YESNO")
+  )
+  reference <- function(x, accept) {
+    best <- c(1L, 0L, NA)
+    for (e in table) {
+      if (bitwAnd(accept, BOOL[[e[[3]]]]) == 0L) next
+      n <- nchar(e[[1]])
+      if (n > best[2] && startsWith(x, e[[1]])) best <- c(0L, n, e[[2]])
+    }
+    best
+  }
+  words <- c(vapply(table, `[[`, "", 1), "", "x", "tru", "TRUEx", "Fals", "FALSe",
+             "ye", "YeS", "nO", "o", "O", "of", "OF", "oN", "Ofx", "onn", "10", "01",
+             "yess", "No!", "2", "Tr", "Fa")
+  for (accept in 0:63) {
+    for (w in words) {
+      expect_identical(parse_bool(w, accept), reference(w, accept),
+                       label = sprintf("%s with accept %d", w, accept))
+    }
+  }
+})

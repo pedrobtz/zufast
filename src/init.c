@@ -20,7 +20,6 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_format_double, 2),
     CALLDEF(zufast_hash, 3),
     CALLDEF(zufast_test_status_string, 1),
-    CALLDEF(zufast_test_mul128, 2),
     CALLDEF(zufast_test_parse_bool, 2),
     CALLDEF(zufast_test_equals, 3),
     CALLDEF(zufast_test_trim, 1),
