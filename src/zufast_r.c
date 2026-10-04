@@ -9,9 +9,11 @@
 SEXP zufast_info(void)
 {
     const char *names[] = {"version", "version_major", "version_minor",
-                           "version_patch", "compiler", "vendored", ""};
+                           "version_patch", "compiler", "build", "vendored", ""};
     const char *vendor_names[] = {"ffc", "ryu", "xxhash", ""};
-    SEXP vendored;
+    const char *build_names[] = {"c_standard", "optimized", "ndebug", "fortify_source",
+                                 "int128", "endian", "simd", ""};
+    SEXP vendored, build;
     SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
     SET_VECTOR_ELT(out, 0, Rf_mkString(ZUFAST_VERSION));
     SET_VECTOR_ELT(out, 1, Rf_ScalarInteger(ZUFAST_VERSION_MAJOR));
@@ -24,8 +26,61 @@ SEXP zufast_info(void)
 #else
     SET_VECTOR_ELT(out, 4, Rf_mkString("unknown"));
 #endif
+    /* The flags that change the generated code, as the preprocessor saw
+       them when this file was compiled. */
+    build = Rf_mkNamed(STRSXP, build_names);
+    SET_VECTOR_ELT(out, 5, build);
+    {
+        char v[24];
+#if defined(__STDC_VERSION__)
+        snprintf(v, sizeof v, "%ld", (long)__STDC_VERSION__);
+#else
+        snprintf(v, sizeof v, "C89");
+#endif
+        SET_STRING_ELT(build, 0, Rf_mkChar(v));
+    }
+#if defined(__OPTIMIZE__)
+    SET_STRING_ELT(build, 1, Rf_mkChar("true"));
+#else
+    SET_STRING_ELT(build, 1, Rf_mkChar("false"));
+#endif
+#if defined(NDEBUG)
+    SET_STRING_ELT(build, 2, Rf_mkChar("true"));
+#else
+    SET_STRING_ELT(build, 2, Rf_mkChar("false"));
+#endif
+    {
+        char v[24];
+#if defined(_FORTIFY_SOURCE)
+        snprintf(v, sizeof v, "%d", (int)_FORTIFY_SOURCE);
+#else
+        snprintf(v, sizeof v, "0");
+#endif
+        SET_STRING_ELT(build, 3, Rf_mkChar(v));
+    }
+#if defined(__SIZEOF_INT128__)
+    SET_STRING_ELT(build, 4, Rf_mkChar("true"));
+#else
+    SET_STRING_ELT(build, 4, Rf_mkChar("false"));
+#endif
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    SET_STRING_ELT(build, 5, Rf_mkChar("big"));
+#elif defined(__BYTE_ORDER__)
+    SET_STRING_ELT(build, 5, Rf_mkChar("little"));
+#else
+    SET_STRING_ELT(build, 5, Rf_mkChar("unknown"));
+#endif
+#if defined(__AVX2__)
+    SET_STRING_ELT(build, 6, Rf_mkChar("avx2"));
+#elif defined(__SSE2__) || defined(_M_X64)
+    SET_STRING_ELT(build, 6, Rf_mkChar("sse2"));
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+    SET_STRING_ELT(build, 6, Rf_mkChar("neon"));
+#else
+    SET_STRING_ELT(build, 6, Rf_mkChar("none"));
+#endif
     vendored = Rf_mkNamed(STRSXP, vendor_names);
-    SET_VECTOR_ELT(out, 5, vendored);
+    SET_VECTOR_ELT(out, 6, vendored);
     SET_STRING_ELT(vendored, 0, Rf_mkChar(ZUF_INT_FFC_VERSION_STRING));
     SET_STRING_ELT(vendored, 1, Rf_mkChar(ZUF_INT_RYU_VERSION));
     {
@@ -95,6 +150,17 @@ SEXP zufast_encode(SEXP x, SEXP kind, SEXP flags)
     }
 }
 
+/* The length a well-formed Base64 string decodes to, from its length and
+   padding, so that the result is allocated once at its final size. For a
+   malformed string the value does not matter: the decoder rejects it on
+   structure before it compares against cap. */
+static size_t base64_decoded_len(const char *first, const char *last)
+{
+    size_t n = (size_t)(last - first), m = n;
+    while (m > 0 && n - m < 2 && first[m - 1] == '=') m--;
+    return m / 4 * 3 + (m % 4 > 1 ? m % 4 - 1 : 0);
+}
+
 /* Decode each element of a character vector to a raw vector; NULL where the
    element is NA or not valid. */
 SEXP zufast_decode(SEXP x, SEXP kind, SEXP flags)
@@ -112,14 +178,11 @@ SEXP zufast_decode(SEXP x, SEXP kind, SEXP flags)
         if (s == NA_STRING) continue;
         first = CHAR(s);
         last = first + LENGTH(s);
-        cap = k == 0 ? (size_t)LENGTH(s) / 2 : zuf_base64_decode_bound((size_t)LENGTH(s));
+        cap = k == 0 ? (size_t)LENGTH(s) / 2 : base64_decoded_len(first, last);
         raw = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t)cap));
         st = k == 0 ? zuf_hex_decode(first, last, RAW(raw), cap, &len)
                     : zuf_base64_decode(first, last, RAW(raw), cap, &len, f);
-        if (st == ZUF_OK) {
-            if (len != cap) raw = Rf_xlengthgets(raw, (R_xlen_t)len);
-            SET_VECTOR_ELT(out, i, raw);
-        }
+        if (st == ZUF_OK) SET_VECTOR_ELT(out, i, raw);
         UNPROTECT(1);
     }
     UNPROTECT(1);
@@ -178,13 +241,16 @@ SEXP zufast_datetime_fields(SEXP x)
     const char *names[] = {"year", "month", "day", "hour", "minute", "second",
                            "nanosecond", "offset", "has_time", "has_offset", ""};
     R_xlen_t i, n = XLENGTH(x);
-    int k;
+    int k, *col[8], *has_time, *has_offset;
     SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
-    for (k = 0; k < 6; k++) SET_VECTOR_ELT(out, k, Rf_allocVector(INTSXP, n));
-    SET_VECTOR_ELT(out, 6, Rf_allocVector(INTSXP, n));
-    SET_VECTOR_ELT(out, 7, Rf_allocVector(INTSXP, n));
+    for (k = 0; k < 8; k++) {
+        SET_VECTOR_ELT(out, k, Rf_allocVector(INTSXP, n));
+        col[k] = INTEGER(VECTOR_ELT(out, k));
+    }
     SET_VECTOR_ELT(out, 8, Rf_allocVector(LGLSXP, n));
     SET_VECTOR_ELT(out, 9, Rf_allocVector(LGLSXP, n));
+    has_time = LOGICAL(VECTOR_ELT(out, 8));
+    has_offset = LOGICAL(VECTOR_ELT(out, 9));
     for (i = 0; i < n; i++) {
         zuf_datetime dt;
         int v[8];
@@ -194,13 +260,13 @@ SEXP zufast_datetime_fields(SEXP x)
         v[0] = dt.year; v[1] = dt.month; v[2] = dt.day; v[3] = dt.hour;
         v[4] = dt.minute; v[5] = dt.second; v[6] = (int)dt.nanosecond;
         v[7] = dt.offset_seconds;
-        for (k = 0; k < 8; k++) INTEGER(VECTOR_ELT(out, k))[i] = ok ? v[k] : NA_INTEGER;
-        if (ok && !dt.has_offset) INTEGER(VECTOR_ELT(out, 7))[i] = NA_INTEGER;
+        for (k = 0; k < 8; k++) col[k][i] = ok ? v[k] : NA_INTEGER;
+        if (ok && !dt.has_offset) col[7][i] = NA_INTEGER;
         if (ok && !dt.has_time) {
-            for (k = 3; k < 7; k++) INTEGER(VECTOR_ELT(out, k))[i] = NA_INTEGER;
+            for (k = 3; k < 7; k++) col[k][i] = NA_INTEGER;
         }
-        LOGICAL(VECTOR_ELT(out, 8))[i] = ok ? dt.has_time : NA_LOGICAL;
-        LOGICAL(VECTOR_ELT(out, 9))[i] = ok ? dt.has_offset : NA_LOGICAL;
+        has_time[i] = ok ? dt.has_time : NA_LOGICAL;
+        has_offset[i] = ok ? dt.has_offset : NA_LOGICAL;
     }
     UNPROTECT(1);
     return out;
@@ -222,7 +288,7 @@ SEXP zufast_format_datetime(SEXP x, SEXP digits)
         int32_t y;
         uint32_t m, d, frac;
         zuf_datetime dt;
-        char buf[ZUF_DATETIME_MAX_CHARS + 16];
+        char buf[ZUF_DATETIME_MAX_CHARS];
         size_t len;
         /* beyond the int32 day range the calendar does not reach */
         if (!R_FINITE(v) || v > 1.8e14 || v < -1.8e14) {

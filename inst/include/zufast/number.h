@@ -55,6 +55,11 @@ typedef struct {
 #define ZUF_NUM_LEADING_PLUS  2u  /* accept a leading '+' */
 #define ZUF_NUM_SKIP_SPACE    4u  /* skip leading ASCII whitespace */
 
+/* detail/number_impl.h tests the same bits under its own names. */
+ZUF_STATIC_ASSERT(ZUF_NUM_JSON == ZUF_INT_NUM_JSON, number_flag_json);
+ZUF_STATIC_ASSERT(ZUF_NUM_LEADING_PLUS == ZUF_INT_NUM_LEADING_PLUS, number_flag_leading_plus);
+ZUF_STATIC_ASSERT(ZUF_NUM_SKIP_SPACE == ZUF_INT_NUM_SKIP_SPACE, number_flag_skip_space);
+
 ZUF_INLINE zuf_result zuf_parse_f64_opt(const char *first, const char *last, double *out,
                                         const zuf_num_options *opt)
 {
@@ -181,6 +186,10 @@ ZUF_INLINE char *zuf_write_i32(char *dst, int32_t v)
 #define ZUF_FMT_SCIENTIFIC     1u  /* always d.ddde+-x */
 #define ZUF_FMT_TRAILING_ZERO  2u  /* "1.0", not "1", for integral values in positional form */
 
+/* detail/format_impl.h tests the same bits under its own names. */
+ZUF_STATIC_ASSERT(ZUF_FMT_SCIENTIFIC == ZUF_INT_FMT_SCIENTIFIC, number_fmt_scientific);
+ZUF_STATIC_ASSERT(ZUF_FMT_TRAILING_ZERO == ZUF_INT_FMT_TRAILING_ZERO, number_fmt_trailing_zero);
+
 /* The digits and exponent themselves, for a consumer that formats its own
    way: |v| == mantissa * 10^exponent after rounding to the type, with the
    fewest digits. Zero and non-finite values give mantissa 0, exponent 0. */
@@ -191,7 +200,7 @@ ZUF_INLINE zuf_decimal zuf_decimal_f64(double v)
     zuf_decimal d;
     uint64_t bits;
     memcpy(&bits, &v, 8);
-    zuf_int_shortest_f64(v, &d.mantissa, &d.exponent);
+    (void)zuf_int_shortest_f64(bits, &d.mantissa, &d.exponent);
     d.negative = (bits >> 63) != 0;
     return d;
 }
@@ -201,14 +210,17 @@ ZUF_INLINE zuf_decimal zuf_decimal_f32(float v)
     zuf_decimal d;
     uint32_t bits;
     memcpy(&bits, &v, 4);
-    zuf_int_shortest_f32(v, &d.mantissa, &d.exponent);
+    (void)zuf_int_shortest_f32(bits, &d.mantissa, &d.exponent);
     d.negative = (bits >> 31) != 0;
     return d;
 }
 
+/* Copy len bytes to dst when they fit. cap == 0 returns before memcpy, so
+   that a measuring call with dst == NULL never reaches it. */
 ZUF_INLINE size_t zuf_int_emit(char *dst, size_t cap, const char *tmp, size_t len)
 {
-    if (cap >= len) memcpy(dst, tmp, len);
+    if (cap == 0 || cap < len) return len;
+    memcpy(dst, tmp, len);
     return len;
 }
 
@@ -216,19 +228,26 @@ ZUF_INLINE size_t zuf_int_emit(char *dst, size_t cap, const char *tmp, size_t le
 ZUF_INLINE size_t zuf_format_f64_opt(char *dst, size_t cap, double v, uint32_t flags)
 {
     char tmp[32];
-    zuf_decimal d = zuf_decimal_f64(v);
-    int special = v != v ? 1 : (v - v != 0.0) ? 2 : 0;
+    uint64_t bits, mantissa;
+    int32_t exponent;
+    int special;
+    memcpy(&bits, &v, 8);
+    special = zuf_int_shortest_f64(bits, &mantissa, &exponent);
     return zuf_int_emit(dst, cap, tmp,
-                        zuf_int_format_decimal(tmp, d.negative, d.mantissa, d.exponent, special, flags));
+                        zuf_int_format_decimal(tmp, (bits >> 63) != 0, mantissa, exponent, special, flags));
 }
 
 ZUF_INLINE size_t zuf_format_f32_opt(char *dst, size_t cap, float v, uint32_t flags)
 {
     char tmp[32];
-    zuf_decimal d = zuf_decimal_f32(v);
-    int special = v != v ? 1 : (v - v != 0.0f) ? 2 : 0;
+    uint32_t bits;
+    uint64_t mantissa;
+    int32_t exponent;
+    int special;
+    memcpy(&bits, &v, 4);
+    special = zuf_int_shortest_f32(bits, &mantissa, &exponent);
     return zuf_int_emit(dst, cap, tmp,
-                        zuf_int_format_decimal(tmp, d.negative, d.mantissa, d.exponent, special, flags));
+                        zuf_int_format_decimal(tmp, (bits >> 31) != 0, mantissa, exponent, special, flags));
 }
 
 ZUF_INLINE size_t zuf_format_f64(char *dst, size_t cap, double v)
@@ -253,9 +272,7 @@ ZUF_INLINE size_t zuf_format_f64_fixed(char *dst, size_t cap, double v, int plac
 {
     if (v != v || v - v != 0.0) {   /* NaN or infinite */
         const char *s = v != v ? "NaN" : v > 0 ? "Inf" : "-Inf";
-        size_t len = strlen(s);
-        if (cap >= len) memcpy(dst, s, len);
-        return len;
+        return zuf_int_emit(dst, cap, s, strlen(s));
     }
     return zuf_int_format_fixed(dst, cap, v, places);
 }

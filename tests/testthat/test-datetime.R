@@ -157,6 +157,14 @@ test_that("zuf_format_datetime() writes RFC 3339 and round-trips", {
   expect_identical(fmt(fields(10000, 1, 1)), "+10000-01-01")
   expect_identical(fmt(fields(-1, 1, 1)), "-00001-01-01")
   expect_identical(fmt(fields(0, 1, 1)), "0000-01-01")
+  expect_identical(fmt(fields(123456, 1, 1)), "+123456-01-01")
+  expect_identical(fmt(fields(-99999, 1, 1)), "-99999-01-01")
+  expect_identical(fmt(fields(-100000, 1, 1)), "-100000-01-01")
+  # ZUF_DATETIME_MAX_CHARS (42) covers any int32_t year
+  widest <- fields(-2147483648, 12, 31, 23, 59, 60, 999999999, -86340, 1, 1)
+  expect_identical(fmt(widest), "-2147483648-12-31T23:59:60.999999999-23:59")
+  expect_identical(.Call(zufast_test_format_datetime, widest, 0)[[1]], 42)
+  expect_identical(fmt(fields(2147483647, 1, 1)), "+2147483647-01-01")
   # out-of-range fields never write out of bounds
   expect_identical(fmt(fields(2024, 250, 250, 250, 250, 250, 4e9, 0, 1, 1)),
                    "2024-50-50T50:50:50Z")

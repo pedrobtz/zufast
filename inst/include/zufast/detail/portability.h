@@ -37,28 +37,4 @@
      typedef char ZUF_INT_CAT(zuf_int_static_assert_, tag)[(cond) ? 1 : -1]
 #endif
 
-/* 64 x 64 -> 128-bit unsigned multiply. */
-typedef struct { uint64_t low, high; } zuf_int_u128;
-
-ZUF_INLINE zuf_int_u128 zuf_int_mul128(uint64_t a, uint64_t b)
-{
-    zuf_int_u128 r;
-#if defined(__SIZEOF_INT128__) && !defined(ZUF_NO_INT128)
-    __extension__ unsigned __int128 p = (unsigned __int128)a * b;
-    r.low  = (uint64_t)p;
-    r.high = (uint64_t)(p >> 64);
-#else
-    uint64_t a_lo = (uint32_t)a, a_hi = a >> 32;
-    uint64_t b_lo = (uint32_t)b, b_hi = b >> 32;
-    uint64_t lo_lo = a_lo * b_lo;
-    uint64_t hi_lo = a_hi * b_lo;
-    uint64_t lo_hi = a_lo * b_hi;
-    uint64_t hi_hi = a_hi * b_hi;
-    uint64_t cross = (lo_lo >> 32) + (uint32_t)hi_lo + lo_hi;
-    r.low  = (cross << 32) | (uint32_t)lo_lo;
-    r.high = (hi_lo >> 32) + (cross >> 32) + hi_hi;
-#endif
-    return r;
-}
-
 #endif /* ZUFAST_DETAIL_PORTABILITY_H */

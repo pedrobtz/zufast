@@ -23,7 +23,6 @@ SEXP zufast_hash(SEXP x, SEXP bits, SEXP seed);
 
 /* zufast_test.c */
 SEXP zufast_test_status_string(SEXP status);
-SEXP zufast_test_mul128(SEXP a, SEXP b);
 SEXP zufast_test_parse_bool(SEXP x, SEXP accept);
 SEXP zufast_test_equals(SEXP x, SEXP lit, SEXP ci);
 SEXP zufast_test_trim(SEXP x);

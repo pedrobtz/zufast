@@ -253,6 +253,10 @@ Rules:
 
 - Every header compiles standalone as C99 and as C++11 against only `<stddef.h>`,
   `<stdint.h>`, `<stdbool.h>` and `<string.h>`, under `-Wall -Wextra -Wpedantic -Werror`.
+  zufast's own headers include nothing else. The one exception is inside the vendored Ryu
+  units, which include `<assert.h>`, `<stdlib.h>`, `<limits.h>`, `<inttypes.h>` and
+  `<stdio.h>` themselves; patching them out would widen the vendor patch for no gain, since
+  every hosted C implementation has them and `RYU_ASSERT` is defined away.
   `-Wpedantic` is relaxed only inside the vendored headers, by wrapping their inclusion in
   `#pragma GCC diagnostic` guards in `vendor_config.h`.
 - No R header, no `SEXP`, anywhere under `inst/include/`. The R layer lives in `src/`.
@@ -529,7 +533,7 @@ zuf_timestamp zuf_datetime_timestamp(const zuf_datetime *dt);      /* applies of
                                                                       otherwise treats the wall time as UTC */
 
 #define ZUF_DATE_CHARS      10
-#define ZUF_DATETIME_MAX_CHARS 35   /* "YYYY-MM-DDTHH:MM:SS.nnnnnnnnn+HH:MM" */
+#define ZUF_DATETIME_MAX_CHARS 42   /* any int32_t year: "-2147483648-MM-DDTHH:MM:SS.nnnnnnnnn+HH:MM" */
 
 size_t zuf_format_date(char *dst, size_t cap, int32_t days);
 size_t zuf_format_datetime(char *dst, size_t cap, const zuf_datetime *dt);   /* RFC 3339; Z when offset is 0 */
@@ -553,8 +557,13 @@ Package-owned, the one original algorithmic component:
 
 - fixed-position separator checks, since every form above has its separators at known
   offsets once the length is known;
-- two- and four-digit decoding through SWAR on an 8-byte load, with a portable per-byte
-  fallback selected at compile time;
+- `YYYY-MM-` validated and decoded through SWAR on one 8-byte little-endian load: an XOR
+  with the template and two masked tests check every digit and separator at once, and the
+  four year digits combine in two multiply-and-mask steps. The load is assembled from bytes,
+  which GCC and clang compile to a single load on a little-endian target and which is
+  correct on any other, so no compile-time fallback is needed. The remaining fixed-width
+  fields are checked and decoded in one pass each; the per-byte pattern match runs only on
+  the error path, to tell a short input (`ZUF_ERR_INCOMPLETE`) from a malformed one;
 - calendar conversion by the Euclidean affine functions of Neri and Schneider (2022), which
   are faster than the days-from-civil formula of revision 1 and are valid far beyond the
   year range accepted;
@@ -616,6 +625,12 @@ Decoding accepts either case, rejects an odd length (`ZUF_ERR_INVALID`), any non
 and a buffer shorter than half the input (`ZUF_ERR_NO_SPACE`, nothing written). Table
 driven, package-owned.
 
+Both decoders, hex and Base64, follow one contract: a byte outside the alphabet takes
+precedence over every other error, so `ZUF_ERR_INCOMPLETE` and `ZUF_ERR_NO_SPACE` mean the
+input is otherwise well formed; `*out_len` is 0 on any error; `ZUF_ERR_NO_SPACE` writes
+nothing; and on `ZUF_ERR_INVALID` the output up to the decoded length may have been written.
+That last clause lets each decoder read its input once.
+
 ## 14. Base64
 
 ```c
@@ -630,8 +645,10 @@ zuf_status zuf_base64_decode(const char *first, const char *last, void *dst, siz
 ```
 
 Decoding is strict: no whitespace, no characters outside the selected alphabet, padding
-complete or, with `ZUF_B64_NO_PAD`, absent, and non-zero unused trailing bits rejected, so
-that every accepted input has exactly one encoding. A consumer that must accept MIME line
+complete, and non-zero unused trailing bits rejected, so that every accepted input has
+exactly one encoding. The one exception is `ZUF_B64_NO_PAD`, under which padding is optional
+rather than forbidden, so that a decoder configured for unpadded input still accepts the
+canonical form: `"Zg"` and `"Zg=="` both decode. A consumer that must accept MIME line
 breaks strips them first. `ZUF_ERR_INCOMPLETE` for a final quantum of one character.
 
 Package-owned, scalar, table-driven, three bytes per step. No SIMD in v0.1.0: aklomp/base64

@@ -7,9 +7,11 @@
  *
  * Decoding is strict, so that every accepted input has exactly one
  * encoding: no whitespace, nothing outside the selected alphabet, padding
- * complete (or, with ZUF_B64_NO_PAD, absent or complete), and the unused
- * low bits of the final quantum zero. A consumer that must accept MIME line
- * breaks strips them first.
+ * complete, and the unused low bits of the final quantum zero. The one
+ * exception is ZUF_B64_NO_PAD, under which padding is optional rather than
+ * forbidden: "Zg" and "Zg==" both decode, so that a decoder configured for
+ * unpadded input still accepts the canonical form. A consumer that must
+ * accept MIME line breaks strips them first.
  *
  * Every function is pure and may be called from any thread.
  */
@@ -120,6 +122,16 @@ ZUF_INLINE size_t zuf_base64_decode_bound(size_t n)
     return n / 4 * 3 + (n % 4) * 3 / 4;
 }
 
+/* True when any of the n bytes at s is outside the alphabet. Only on the
+   error paths, to keep foreign bytes ahead of structural errors. */
+ZUF_INLINE bool zuf_int_b64_any_foreign(const uint8_t *values, const unsigned char *s, size_t n)
+{
+    uint32_t bad = 0;
+    size_t i;
+    for (i = 0; i < n; i++) bad |= values[s[i]];
+    return (bad & 0xC0u) != 0;
+}
+
 /* Decode [first, last) into dst.
  *
  *   ZUF_OK              *out_len bytes written
@@ -128,57 +140,60 @@ ZUF_INLINE size_t zuf_base64_decode_bound(size_t n)
  *   ZUF_ERR_INCOMPLETE  a final quantum of a single character
  *   ZUF_ERR_NO_SPACE    the decoded length exceeds cap; nothing written
  *
- * Bytes outside the alphabet take precedence over structural errors.
- * Nothing is written unless the result is ZUF_OK; on any error *out_len is
- * 0. */
+ * The contract is the one zuf_hex_decode() follows: a byte outside the
+ * alphabet takes precedence over every other error, so ZUF_ERR_INCOMPLETE
+ * and ZUF_ERR_NO_SPACE mean the input is otherwise well formed; on any
+ * error *out_len is 0; and on ZUF_ERR_INVALID the bytes of dst up to the
+ * decoded length may have been written. The input is read once. */
 ZUF_INLINE zuf_status zuf_base64_decode(const char *first, const char *last, void *dst, size_t cap,
                                         size_t *out_len, uint32_t flags)
 {
     const uint8_t *values = zuf_int_b64_values(flags);
     const unsigned char *s = (const unsigned char *)first;
     unsigned char *d = (unsigned char *)dst;
-    size_t n = (size_t)(last - first), pad = 0, m, full, rem, out, i;
+    size_t n = (size_t)(last - first), pad = 0, m, full, rem, out = 0, i;
+    zuf_status st = ZUF_OK;
+    uint32_t bad = 0;
 
     *out_len = 0;
     while (pad < n && pad < 3 && s[n - 1 - pad] == '=') pad++;
     m = n - pad;
-
-    /* A byte outside the alphabet is reported before any structural error. */
-    {
-        uint32_t bad = 0;
-        for (i = 0; i < m; i++) bad |= values[s[i]];
-        if (bad & 0xC0u) return ZUF_ERR_INVALID;
-    }
-
     rem = m % 4;
+    full = m / 4;
+
     if (pad > 0) {
         if (pad == 3 || n % 4 != 0 || rem != 4 - pad) return ZUF_ERR_INVALID;
     } else if (rem == 1) {
-        return ZUF_ERR_INCOMPLETE;
+        st = ZUF_ERR_INCOMPLETE;
     } else if (rem != 0 && !(flags & ZUF_B64_NO_PAD)) {
         return ZUF_ERR_INVALID;
     }
-
-    full = m / 4;
-    out = full * 3 + (rem ? rem - 1 : 0);
-    if (rem == 2 && (values[s[m - 1]] & 0x0Fu)) return ZUF_ERR_INVALID;
-    if (rem == 3 && (values[s[m - 1]] & 0x03u)) return ZUF_ERR_INVALID;
-    if (cap < out) return ZUF_ERR_NO_SPACE;
+    if (st == ZUF_OK) {
+        out = full * 3 + (rem ? rem - 1 : 0);
+        if (rem == 2 && (values[s[m - 1]] & 0x0Fu)) return ZUF_ERR_INVALID;
+        if (rem == 3 && (values[s[m - 1]] & 0x03u)) return ZUF_ERR_INVALID;
+        if (cap < out) st = ZUF_ERR_NO_SPACE;
+    }
+    if (st != ZUF_OK)
+        return zuf_int_b64_any_foreign(values, s, m) ? ZUF_ERR_INVALID : st;
 
     for (i = 0; i < full; i++) {
         const unsigned char *q = s + 4 * i;
-        uint32_t v = ((uint32_t)values[q[0]] << 18) | ((uint32_t)values[q[1]] << 12) |
-                     ((uint32_t)values[q[2]] << 6) | values[q[3]];
+        uint32_t a = values[q[0]], b = values[q[1]], c = values[q[2]], e = values[q[3]];
+        uint32_t v = (a << 18) | (b << 12) | (c << 6) | e;
+        bad |= a | b | c | e;
         d[3 * i]     = (unsigned char)(v >> 16);
         d[3 * i + 1] = (unsigned char)(v >> 8);
         d[3 * i + 2] = (unsigned char)v;
     }
     if (rem) {
         const unsigned char *q = s + 4 * full;
-        uint32_t a = values[q[0]], b = values[q[1]];
+        uint32_t a = values[q[0]], b = values[q[1]], c = rem == 3 ? values[q[2]] : 0u;
+        bad |= a | b | c;
         d[3 * full] = (unsigned char)((a << 2) | (b >> 4));
-        if (rem == 3) d[3 * full + 1] = (unsigned char)(((b & 0x0Fu) << 4) | (values[q[2]] >> 2));
+        if (rem == 3) d[3 * full + 1] = (unsigned char)(((b & 0x0Fu) << 4) | (c >> 2));
     }
+    if (bad & 0xC0u) return ZUF_ERR_INVALID;
     *out_len = out;
     return ZUF_OK;
 }

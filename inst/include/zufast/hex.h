@@ -62,8 +62,10 @@ ZUF_INLINE size_t zuf_hex_encode(const void *src, size_t n, char *dst, size_t ca
  *   ZUF_ERR_INVALID   odd length or a byte that is not a hex digit
  *   ZUF_ERR_NO_SPACE  cap is less than half the input; nothing written
  *
- * On any error *out_len is 0. Bytes before an invalid digit may have been
- * written. */
+ * The contract is the one zuf_base64_decode() follows: a byte that is not
+ * a hex digit takes precedence over ZUF_ERR_NO_SPACE; on any error
+ * *out_len is 0; and on ZUF_ERR_INVALID the bytes of dst before the
+ * invalid digit may have been written. */
 ZUF_INLINE zuf_status zuf_hex_decode(const char *first, const char *last, void *dst, size_t cap,
                                      size_t *out_len)
 {
@@ -73,7 +75,11 @@ ZUF_INLINE zuf_status zuf_hex_decode(const char *first, const char *last, void *
     size_t n = (size_t)(last - first), i;
     *out_len = 0;
     if (n & 1u) return ZUF_ERR_INVALID;
-    if (cap < n / 2) return ZUF_ERR_NO_SPACE;
+    if (cap < n / 2) {
+        uint32_t bad = 0;
+        for (i = 0; i < n; i++) bad |= values[s[i]];
+        return (bad & 0xF0u) ? ZUF_ERR_INVALID : ZUF_ERR_NO_SPACE;
+    }
     for (i = 0; i < n / 2; i++) {
         uint8_t hi = values[s[2 * i]], lo = values[s[2 * i + 1]];
         if ((hi | lo) & 0xF0u) return ZUF_ERR_INVALID;

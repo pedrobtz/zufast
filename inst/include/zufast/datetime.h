@@ -53,7 +53,8 @@ typedef struct {
 typedef struct { int64_t seconds; uint32_t nanoseconds; } zuf_timestamp;
 
 #define ZUF_DATE_CHARS          10   /* "YYYY-MM-DD", years 0000-9999 */
-#define ZUF_DATETIME_MAX_CHARS  35   /* "YYYY-MM-DDTHH:MM:SS.nnnnnnnnn+HH:MM", years 0000-9999 */
+#define ZUF_DATETIME_MAX_CHARS  42   /* any int32_t year: "-2147483648-MM-DDTHH:MM:SS.nnnnnnnnn+HH:MM";
+                                         35 for years 0000-9999 */
 #define ZUF_DATE_MAX_CHARS      14   /* any int32_t day count: "+5881580-07-11" */
 
 /* ---- calendar ----------------------------------------------------------- */
@@ -130,16 +131,49 @@ ZUF_INLINE int zuf_int_two_digits(const unsigned char *p)
     return (a < 10u && b < 10u) ? (int)(a * 10u + b) : -1;
 }
 
-/* Match [p, end) against a pattern of 'd' (digit) and literal bytes.
-   Returns 1 on a full match, 0 when the input ends while matching (the
-   available prefix fits), -1 on a mismatch. */
-ZUF_INLINE int zuf_int_match(const unsigned char *p, const unsigned char *end, const char *pattern)
+/* The 8 bytes at p as a little-endian integer. Written portably; GCC and
+   clang compile it to a single load on a little-endian target. */
+ZUF_INLINE uint64_t zuf_int_load_le64(const unsigned char *p)
 {
-    for (; *pattern; pattern++, p++) {
-        if (p == end) return 0;
-        if (*pattern == 'd' ? !zuf_int_is_digit(*p) : *p != (unsigned char)*pattern) return -1;
+    return (uint64_t)p[0] | ((uint64_t)p[1] << 8) | ((uint64_t)p[2] << 16) | ((uint64_t)p[3] << 24) |
+           ((uint64_t)p[4] << 32) | ((uint64_t)p[5] << 40) | ((uint64_t)p[6] << 48) |
+           ((uint64_t)p[7] << 56);
+}
+
+/* "YYYY-MM-" at p, as SWAR on one 8-byte load: XOR with the template turns
+   each digit into its value 0-9 and each '-' into 0, and two masked tests
+   reject everything else. Returns false unless the 8 bytes match; on true,
+   *year is 0-9999 and *month 0-99. */
+ZUF_INLINE bool zuf_int_swar_year_month(const unsigned char *p, uint32_t *year, uint32_t *month)
+{
+    /* little-endian: byte 0 is the first character */
+    const uint64_t tmpl = UINT64_C(0x2D30302D30303030);   /* "0000-00-" */
+    const uint64_t high = UINT64_C(0xFFF0F0FFF0F0F0F0);   /* high nibbles of digits, all of '-' */
+    const uint64_t add6 = UINT64_C(0x0006060006060606);   /* digit values 10-15 carry into 0x10 */
+    const uint64_t bit4 = UINT64_C(0x0010100010101010);
+    uint64_t t = zuf_int_load_le64(p) ^ tmpl, y;
+    if ((t & high) != 0 || ((t + add6) & bit4) != 0) return false;
+    /* four year digits in bytes 0-3: pairs, then the pair of pairs */
+    y = t & UINT64_C(0xFFFFFFFF);
+    y = (y * 10 + (y >> 8)) & UINT64_C(0x00FF00FF);
+    y = (y * 100 + (y >> 16)) & UINT64_C(0xFFFF);
+    *year = (uint32_t)y;
+    *month = (uint32_t)((t >> 40) & 0xFFu) * 10u + (uint32_t)((t >> 48) & 0xFFu);
+    return true;
+}
+
+/* The cold path for a fixed-width field that is short or malformed: match
+   [p, end) against a pattern of 'd' (digit) and literal bytes, and return
+   ZUF_ERR_INVALID (ptr `first`) on a mismatch within the available bytes,
+   ZUF_ERR_INCOMPLETE (ptr `last`) when every available byte fits. */
+ZUF_INLINE zuf_result zuf_int_field_error(const unsigned char *p, const unsigned char *end,
+                                          const char *pattern, const char *first, const char *last)
+{
+    for (; *pattern && p < end; pattern++, p++) {
+        if (*pattern == 'd' ? !zuf_int_is_digit(*p) : *p != (unsigned char)*pattern)
+            return zuf_int_result(first, ZUF_ERR_INVALID);
     }
-    return 1;
+    return *pattern ? zuf_int_result(last, ZUF_ERR_INCOMPLETE) : zuf_int_result(first, ZUF_ERR_INVALID);
 }
 
 ZUF_INLINE void zuf_int_clear_datetime(zuf_datetime *dt)
@@ -151,18 +185,14 @@ ZUF_INLINE void zuf_int_clear_datetime(zuf_datetime *dt)
 ZUF_INLINE zuf_result zuf_parse_date(const char *first, const char *last, zuf_datetime *out)
 {
     const unsigned char *p = (const unsigned char *)first, *end = (const unsigned char *)last;
-    int match = zuf_int_match(p, end, "dddd-dd-dd");
-    int32_t year;
-    int month, day;
-    if (match < 0) return zuf_int_result(first, ZUF_ERR_INVALID);
-    if (match == 0) return zuf_int_result(last, ZUF_ERR_INCOMPLETE);
-    year = zuf_int_two_digits(p) * 100 + zuf_int_two_digits(p + 2);
-    month = zuf_int_two_digits(p + 5);
-    day = zuf_int_two_digits(p + 8);
-    if (month < 1 || month > 12 || day < 1 || (uint32_t)day > zuf_days_in_month(year, (uint32_t)month))
+    uint32_t year, month;
+    int day;
+    if (end - p < 10 || !zuf_int_swar_year_month(p, &year, &month) || (day = zuf_int_two_digits(p + 8)) < 0)
+        return zuf_int_field_error(p, end, "dddd-dd-dd", first, last);
+    if (month < 1 || month > 12 || day < 1 || (uint32_t)day > zuf_days_in_month((int32_t)year, month))
         return zuf_int_result(first, ZUF_ERR_INVALID);
     zuf_int_clear_datetime(out);
-    out->year = year;
+    out->year = (int32_t)year;
     out->month = (uint8_t)month;
     out->day = (uint8_t)day;
     return zuf_int_result(first + 10, ZUF_OK);
@@ -173,7 +203,7 @@ ZUF_INLINE zuf_result zuf_parse_datetime(const char *first, const char *last, zu
 {
     const unsigned char *p, *end = (const unsigned char *)last;
     zuf_datetime dt;
-    int match, hour, minute, second = 0;
+    int hour, minute, second = 0;
     uint32_t nano = 0;
     zuf_result r = zuf_parse_date(first, last, &dt);
     if (r.status) return r;
@@ -194,17 +224,13 @@ ZUF_INLINE zuf_result zuf_parse_datetime(const char *first, const char *last, zu
     }
     p++;
 
-    match = zuf_int_match(p, end, "dd:dd");
-    if (match < 0) return zuf_int_result(first, ZUF_ERR_INVALID);
-    if (match == 0) return zuf_int_result(last, ZUF_ERR_INCOMPLETE);
-    hour = zuf_int_two_digits(p);
-    minute = zuf_int_two_digits(p + 3);
+    if (end - p < 5 || (hour = zuf_int_two_digits(p)) < 0 || p[2] != ':' ||
+        (minute = zuf_int_two_digits(p + 3)) < 0)
+        return zuf_int_field_error(p, end, "dd:dd", first, last);
     p += 5;
     if (p < end && *p == ':') {
-        match = zuf_int_match(p, end, ":dd");
-        if (match < 0) return zuf_int_result(first, ZUF_ERR_INVALID);
-        if (match == 0) return zuf_int_result(last, ZUF_ERR_INCOMPLETE);
-        second = zuf_int_two_digits(p + 1);
+        if (end - p < 3 || (second = zuf_int_two_digits(p + 1)) < 0)
+            return zuf_int_field_error(p, end, ":dd", first, last);
         p += 3;
         if (p < end && *p == '.') {
             int digits = 0;
@@ -236,22 +262,16 @@ ZUF_INLINE zuf_result zuf_parse_datetime(const char *first, const char *last, zu
     } else if (p < end && (*p == '+' || *p == '-')) {
         int sign = *p == '-' ? -1 : 1, oh, om = 0;
         p++;
-        match = zuf_int_match(p, end, "dd");
-        if (match < 0) return zuf_int_result(first, ZUF_ERR_INVALID);
-        if (match == 0) return zuf_int_result(last, ZUF_ERR_INCOMPLETE);
-        oh = zuf_int_two_digits(p);
+        if (end - p < 2 || (oh = zuf_int_two_digits(p)) < 0)
+            return zuf_int_field_error(p, end, "dd", first, last);
         p += 2;
         if (p < end && *p == ':') {
-            match = zuf_int_match(p, end, ":dd");
-            if (match < 0) return zuf_int_result(first, ZUF_ERR_INVALID);
-            if (match == 0) return zuf_int_result(last, ZUF_ERR_INCOMPLETE);
-            om = zuf_int_two_digits(p + 1);
+            if (end - p < 3 || (om = zuf_int_two_digits(p + 1)) < 0)
+                return zuf_int_field_error(p, end, ":dd", first, last);
             p += 3;
         } else if (p < end && zuf_int_is_digit(*p)) {
-            match = zuf_int_match(p, end, "dd");
-            if (match < 0) return zuf_int_result(first, ZUF_ERR_INVALID);
-            if (match == 0) return zuf_int_result(last, ZUF_ERR_INCOMPLETE);
-            om = zuf_int_two_digits(p);
+            if (end - p < 2 || (om = zuf_int_two_digits(p)) < 0)
+                return zuf_int_field_error(p, end, "dd", first, last);
             p += 2;
         }
         if (oh > 23 || om > 59) return zuf_int_result(first, ZUF_ERR_INVALID);
@@ -285,31 +305,39 @@ ZUF_INLINE zuf_timestamp zuf_datetime_timestamp(const zuf_datetime *dt)
 
 /* ---- formatting --------------------------------------------------------- */
 
-/* Write a year: four digits for 0-9999, otherwise ISO 8601 expanded form
-   with a sign and at least five digits. Returns the length. */
-ZUF_INLINE size_t zuf_int_format_year(char *d, int32_t year)
-{
-    char tmp[12];
-    size_t n = 0, len, i;
-    uint32_t v;
-    if (year >= 0 && year <= 9999) {
-        zuf_int_write2(d, (uint32_t)year / 100);
-        zuf_int_write2(d + 2, (uint32_t)year % 100);
-        return 4;
-    }
-    d[0] = year < 0 ? '-' : '+';
-    v = year < 0 ? 0u - (uint32_t)year : (uint32_t)year;
-    while (v) { tmp[n++] = (char)('0' + v % 10); v /= 10; }
-    while (n < 5) tmp[n++] = '0';
-    len = n;
-    for (i = 0; i < len; i++) d[1 + i] = tmp[len - 1 - i];
-    return 1 + len;
-}
-
+/* The length zuf_int_format_year() writes for year. */
 ZUF_INLINE size_t zuf_int_year_len(int32_t year)
 {
-    char tmp[16];
-    return zuf_int_format_year(tmp, year);
+    uint32_t v;
+    size_t n = 0;
+    if (year >= 0 && year <= 9999) return 4;
+    v = year < 0 ? 0u - (uint32_t)year : (uint32_t)year;
+    do { n++; v /= 10u; } while (v);
+    return 1 + (n < 5 ? 5 : n);
+}
+
+/* Write the n low decimal digits of v to d, two at a time from the end. */
+ZUF_INLINE void zuf_int_write_digits(char *d, uint32_t v, size_t n)
+{
+    while (n >= 2) {
+        n -= 2;
+        zuf_int_write2(d + n, v % 100u);
+        v /= 100u;
+    }
+    if (n) d[0] = (char)('0' + v % 10u);
+}
+
+/* Write a year in the len == zuf_int_year_len(year) bytes at d: four
+   digits for 0-9999, otherwise ISO 8601 expanded form with a sign and at
+   least five digits. */
+ZUF_INLINE void zuf_int_format_year(char *d, int32_t year, size_t len)
+{
+    if (len == 4) {
+        zuf_int_write_digits(d, (uint32_t)year, 4);
+        return;
+    }
+    d[0] = year < 0 ? '-' : '+';
+    zuf_int_write_digits(d + 1, year < 0 ? 0u - (uint32_t)year : (uint32_t)year, len - 1);
 }
 
 /* YYYY-MM-DD for a day count from 1970-01-01. Returns the length (10 for
@@ -323,7 +351,8 @@ ZUF_INLINE size_t zuf_format_date(char *dst, size_t cap, int32_t days)
     len = zuf_int_year_len(y) + 6;
     if (cap < len) return len;
     {
-        size_t k = zuf_int_format_year(dst, y);
+        size_t k = len - 6;
+        zuf_int_format_year(dst, y, k);
         dst[k] = '-';
         zuf_int_write2(dst + k + 1, m);
         dst[k + 3] = '-';
@@ -354,7 +383,8 @@ ZUF_INLINE size_t zuf_format_datetime(char *dst, size_t cap, const zuf_datetime 
     }
     if (cap < len) return len;
 
-    k = zuf_int_format_year(dst, dt->year);
+    zuf_int_format_year(dst, dt->year, ylen);
+    k = ylen;
     dst[k] = '-';
     zuf_int_write2(dst + k + 1, dt->month % 100u);
     dst[k + 3] = '-';
@@ -369,12 +399,8 @@ ZUF_INLINE size_t zuf_format_datetime(char *dst, size_t cap, const zuf_datetime 
     zuf_int_write2(dst + k + 7, dt->second % 100u);
     k += 9;
     if (frac_digits) {
-        uint32_t i;
         dst[k++] = '.';
-        for (i = frac_digits; i > 0; i--) {
-            dst[k + i - 1] = (char)('0' + frac % 10u);
-            frac /= 10u;
-        }
+        zuf_int_write_digits(dst + k, frac, frac_digits);
         k += frac_digits;
     }
     if (dt->has_offset) {

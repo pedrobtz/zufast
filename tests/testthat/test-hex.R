@@ -52,6 +52,10 @@ test_that("zuf_hex_decode() rejects every malformed class with the right status"
   expect_identical(res[[1]], 4L)
   expect_identical(res[[2]], 0)
   expect_true(all(res[[3]] == SENT))
+  # an invalid digit takes precedence over NO_SPACE
+  res <- hex_dec("abcdzz", 2)
+  expect_identical(res[[1]], 1L)
+  expect_identical(res[[2]], 0)
   # exactly enough
   res <- hex_dec("abcdef", 3)
   expect_identical(res[[1]], 0L)

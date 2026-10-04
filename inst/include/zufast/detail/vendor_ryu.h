@@ -17,13 +17,6 @@
 #ifndef ZUFAST_DETAIL_VENDOR_RYU_H
 #define ZUFAST_DETAIL_VENDOR_RYU_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-#include <assert.h>
-
 #include "vendor_config.h"
 
 /* identifiers shared by both units */
