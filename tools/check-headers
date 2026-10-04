@@ -57,10 +57,18 @@ done
 echo "== no-int128 fallback"
 probe=tools/abi/probe-int128.c
 NOI128=-U__SIZEOF_INT128__
-if ! printf '#include <zufast.h>\n' | $CC -std=c99 -I"$INC" -E -x c - | grep -q '__uint128_t'; then
+# Count __uint128_t in the lines the zufast headers contribute to a
+# preprocessed unit (system headers may use it too: Darwin's arm64 thread
+# state does), following the line markers.
+zufast_int128_uses() {
+    printf '#include <zufast.h>\n' > "$TMP/pp.c"
+    $CC -std=c99 "$@" -I"$INC" -E "$TMP/pp.c" > "$TMP/pp.i"
+    awk '/^# *[0-9]+ "/ { f = $0; next } f ~ /zufast/ && /__uint128_t/ { n++ } END { print n + 0 }' "$TMP/pp.i"
+}
+if [ "$(zufast_int128_uses)" -eq 0 ]; then
     echo "FAIL native build uses no __uint128_t: the differential would compare a fallback with itself"; fail=1
 fi
-if printf '#include <zufast.h>\n' | $CC -std=c99 $NOI128 -I"$INC" -E -x c - | grep -q '__uint128_t'; then
+if [ "$(zufast_int128_uses $NOI128)" -ne 0 ]; then
     echo "FAIL $NOI128 leaves __uint128_t in use"; fail=1
 fi
 for opt in -O0 -O2; do
