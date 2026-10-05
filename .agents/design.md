@@ -909,8 +909,11 @@ reports the pinned upstream versions from compiled code (`FFC_VERSION_*`,
 ### 21.3 The compiled-code audit
 
 `tools/run-symbol-audit` compiles the full-use probe of §21.1 into a shared object with R's
-own flags and runs the same `nm` scan R CMD check applies to compiled code, failing on any
-of `printf`, `abort`, `exit`, `rand`, `srand`, `stdout`, `stderr`, `puts`. The fixture
+own flags, at R's optimisation level and at `-O0`, and scans it with
+`tools:::check_so_symbols()`, the function R CMD check itself runs on compiled code, so the
+platform's own table applies (glibc's fortified `__printf_chk`, Darwin's underscores,
+`sprintf`, the C RNG). A probe with a planted `printf()` must fail first, so a pass means the
+scan looked. The fixture
 package of §21.6 covers the same ground through a real `R CMD check`, and its log must show
 no "compiled code" NOTE.
 
