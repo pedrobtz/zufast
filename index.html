@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">zufast</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -110,7 +110,11 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
+<p>Install the released version from CRAN:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"zufast"</span><span class="op">)</span></span></code></pre></div>
+<p>or the development version from GitHub:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pedrobtz/zufast"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -125,19 +129,19 @@
 <pre class="make"><code>PKG_CFLAGS = $(C_VISIBILITY)</code></pre>
 <p>It is defence in depth: every function and every vendored symbol zufast emits is already <code>static</code>, so two packages that both use zufast never bind to each other’s copies.</p>
 <p><strong>3. Include and call.</strong> Everything, or one area at a time:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;zufast.h&gt;</span><span class="pp">          </span><span class="co">/* everything */</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;zufast/number.h&gt;</span><span class="pp">   </span><span class="co">/* or one area */</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">/* Parse a whole cell as a double. */</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="dt">static</span> <span class="dt">int</span> cell_to_double<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>first<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>last<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>out<span class="op">)</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    zuf_result r <span class="op">=</span> zuf_parse_f64<span class="op">(</span>first<span class="op">,</span> last<span class="op">,</span> out<span class="op">);</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="cf">return</span> r<span class="op">.</span>status <span class="op">==</span> ZUF_OK <span class="op">&amp;&amp;</span> r<span class="op">.</span>ptr <span class="op">==</span> last<span class="op">;</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;zufast.h&gt;</span><span class="pp">          </span><span class="co">/* everything */</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;zufast/number.h&gt;</span><span class="pp">   </span><span class="co">/* or one area */</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">/* Parse a whole cell as a double. */</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="dt">static</span> <span class="dt">int</span> cell_to_double<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>first<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>last<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>out<span class="op">)</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>    zuf_result r <span class="op">=</span> zuf_parse_f64<span class="op">(</span>first<span class="op">,</span> last<span class="op">,</span> out<span class="op">);</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>    <span class="cf">return</span> r<span class="op">.</span>status <span class="op">==</span> ZUF_OK <span class="op">&amp;&amp;</span> r<span class="op">.</span>ptr <span class="op">==</span> last<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>The one idiom to learn: parsers follow <code>std::from_chars</code>. They never require the whole span to be consumed; <code>r.ptr</code> is one past the last byte used, and a caller that needs “the entire span is a value” checks <code>r.ptr == last</code>. On <code>ZUF_ERR_INVALID</code>, <code>r.ptr == first</code>.</p>
 <p>Formatters return the length the value needs, write at most <code>cap</code> bytes, never NUL-terminate, and measure when <code>cap == 0</code>; the <code>ZUF_*_MAX_CHARS</code> macros are capacities that always suffice:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="dt">char</span> buf<span class="op">[</span>ZUF_F64_MAX_CHARS<span class="op">];</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="dt">size_t</span> n <span class="op">=</span> zuf_format_f64<span class="op">(</span>buf<span class="op">,</span> <span class="kw">sizeof</span> buf<span class="op">,</span> x<span class="op">);</span>   <span class="co">/* "0.30000000000000004" */</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="dt">char</span> buf<span class="op">[</span>ZUF_F64_MAX_CHARS<span class="op">];</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="dt">size_t</span> n <span class="op">=</span> zuf_format_f64<span class="op">(</span>buf<span class="op">,</span> <span class="kw">sizeof</span> buf<span class="op">,</span> x<span class="op">);</span>   <span class="co">/* "0.30000000000000004" */</span></span></code></pre></div>
 <p>Any number of translation units may include zufast; there is no implementation macro and nothing to link. A unit that includes <code>&lt;zufast.h&gt;</code> reads about fifteen thousand lines of headers, so include only the areas you use where build time matters. The headers compile as C99 and as C++11, so cpp11 and Rcpp code can include them too.</p>
 <p><strong>Compatibility.</strong> Within major version 1, everything a release declares stays, with the same meaning, and enumerator values never change; a package built against an older zufast keeps working, and rebuilding against a newer one needs no change. <code>ZUFAST_VERSION_MAJOR</code>, <code>_MINOR</code>, <code>_PATCH</code> and <code>ZUFAST_VERSION</code> say which headers you compiled against. Names with a <code>zuf_int_</code> prefix are internal and outside that promise. See <code><a href="articles/linking.html">vignette("linking")</a></code> for the contract in full.</p>
 </div>
@@ -145,7 +149,7 @@
 <h2 id="from-r">From R<a class="anchor" aria-label="anchor" href="#from-r"></a>
 </h2>
 <p>The R functions exist to test, benchmark and demonstrate the C layer:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://pedrobtz.github.io/zufast/">zufast</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/fast_parse_double.html">fast_parse_double</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"0.1"</span>, <span class="st">"1e-7"</span>, <span class="st">" +inf "</span>, <span class="st">"abc"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/fast_format_double.html">fast_format_double</a></span><span class="op">(</span><span class="fl">0.1</span> <span class="op">+</span> <span class="fl">0.2</span><span class="op">)</span>                       <span class="co"># "0.30000000000000004"</span></span>
@@ -193,7 +197,7 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Pedro Z <br><small class="roles"> Author, maintainer </small>   </li>
+<li>Pedro Baltazar <br><small class="roles"> Author, maintainer, copyright holder </small>   </li>
 <li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>
@@ -211,7 +215,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Pedro Z.</p>
+  <p>Developed by Pedro Baltazar.</p>
 </div>
 
 <div class="pkgdown-footer-right">

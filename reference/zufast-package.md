@@ -20,13 +20,27 @@ Useful links:
 
 ## Author
 
-**Maintainer**: Pedro Z <pedrobtz@gmail.com>
+**Maintainer**: Pedro Baltazar <pedrobtz@gmail.com> \[copyright holder\]
 
 Authors:
 
-- Pedro Z <pedrobtz@gmail.com>
+- Pedro Baltazar <pedrobtz@gmail.com> \[copyright holder\]
 
 Other contributors:
 
 - Bjoern Hoehrmann (UTF-8 decoder state table in
   inst/include/zufast/utf8.h) \[copyright holder\]
+
+- Daniel Lemire (fast_float, ported to C as ffc.h) \[copyright holder\]
+
+- João Paulo Magalhaes (fast_float, ported to C as ffc.h) \[copyright
+  holder\]
+
+- The fast_float authors (fast_float, ported to C as ffc.h) \[copyright
+  holder\]
+
+- Koleman Nix (ffc.h, the C port of fast_float) \[copyright holder\]
+
+- Ulf Adams (Ryu) \[copyright holder\]
+
+- Yann Collet (xxHash) \[copyright holder\]

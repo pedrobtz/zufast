@@ -134,7 +134,7 @@ calls `R_strtod()`.
 
 `zuf_format_f64()` writes the fewest significant digits that parse back
 to exactly the same double, in the notation of ECMAScript’s
-`Number::toString`: positional for decimal exponents from -7 to 20,
+`Number::toString`: positional for decimal exponents from -6 to 20,
 `d.ddde+x` otherwise. R’s
 [`as.character()`](https://rdrr.io/r/base/character.html) writes fifteen
 significant digits, which is a different thing: it can print two

@@ -25,7 +25,9 @@ fast_format_datetime(x, digits = NULL)
 
 ## Value
 
-A character vector, `NA` where `x` is `NA` or not finite.
+A character vector, `NA` where `x` is `NA`, not finite, or outside the
+calendar's range (a day count beyond the `int32_t` range, about plus or
+minus 5.8 million years).
 
 ## Examples
 
@@ -33,7 +35,7 @@ A character vector, `NA` where `x` is `NA` or not finite.
 fast_format_datetime(as.POSIXct("2024-03-01 12:30:00.25", tz = "UTC"))
 #> [1] "2024-03-01T12:30:00.250Z"
 fast_format_datetime(Sys.time(), digits = 0)
-#> [1] "2026-10-05T14:25:06Z"
+#> [1] "2026-10-05T21:28:58Z"
 fast_format_datetime(as.Date("2024-03-01"))
 #> [1] "2024-03-01"
 ```

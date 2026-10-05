@@ -2,8 +2,9 @@
 
 Writes each value with the fewest significant digits that parse back to
 exactly the same double, in the notation of ECMAScript's
-`Number.prototype.toString()`: positional for decimal exponents from -7
-to 20 (`0.1`, `123.5`, `100`), `d.ddde+x` otherwise (`1e+21`, `1e-7`).
+`Number.prototype.toString()`: positional for decimal exponents from -6
+to 20 (`0.000001`, `0.1`, `123.5`, `100`), `d.ddde+x` otherwise
+(`1e+21`, `1e-7`).
 
 ## Usage
 

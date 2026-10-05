@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">zufast</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,68 +39,23 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="zufast-development-version">zufast (development version)<a class="anchor" aria-label="anchor" href="#zufast-development-version"></a></h2>
-<ul><li>
-<code>tools/run-symbol-audit</code> scans with R’s own <code>tools:::check_so_symbols()</code> instead of a hand-written list, which missed glibc’s <code>__printf_chk</code> (what <code>printf()</code> becomes under R’s default <code>-D_FORTIFY_SOURCE</code>) and <code>sprintf</code>. A planted <code>printf()</code> canary must fail the audit before the real run.</li>
-<li>
-<code>zuf_base64_encode()</code> with <code>ZUF_B64_NO_PAD</code> returns <code>SIZE_MAX</code> when the encoded length does not fit a <code>size_t</code>, as the padded form does; before, the length wrapped and a measuring call could write through <code>NULL</code> (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
-<li>
-<code>ZUF_NUM_JSON</code> now applies to the integer parsers: a leading zero, a leading <code>+</code> (even with <code>ZUF_NUM_LEADING_PLUS</code>) and any base other than 10 are <code>ZUF_ERR_INVALID</code>, as for floating point (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
-<li>The floating-point parsers no longer consume a <code>nan(...)</code> payload, which the documented grammar excludes: the number ends after <code>nan</code>, so <code>fast_parse_double("nan(1)")</code> is <code>NA</code> (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
-<li>
-<code>zuf_hasher</code> is a union holding a real XXH3 state object, so xxHash’s typed accesses no longer rely on reading a character array as another type. Its size (640 bytes) and alignment (64) are unchanged (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
-<li>
-<code><a href="../reference/fast_hex_encode.html">fast_hex_encode()</a></code> and <code><a href="../reference/fast_base64_encode.html">fast_base64_encode()</a></code> raise an error when the result would exceed R’s string length limit, before allocating (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
-<li>The header gate’s no-int128 check builds the vendored portable multiplies (by undefining <code>__SIZEOF_INT128__</code>) and requires them to match the native ones; the old <code>-DZUF_NO_INT128</code> build selected nothing (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
-<li>
-<code>zuf_parse_bool()</code> dispatches on the first byte instead of scanning every spelling (about 6x faster on mixed cells); the longest-match rule is unchanged.</li>
-<li>
-<code>zuf_base64_decode()</code> reads its input once (about 2x faster). It and <code>zuf_hex_decode()</code> now share one error contract: a byte outside the alphabet takes precedence over every other error (so <code>zuf_hex_decode()</code> reports <code>ZUF_ERR_INVALID</code>, not <code>ZUF_ERR_NO_SPACE</code>, for a short buffer and bad input), <code>ZUF_ERR_NO_SPACE</code> writes nothing, and on <code>ZUF_ERR_INVALID</code> the output may have been partly written.</li>
-<li>Date parsing validates and decodes <code>YYYY-MM-</code> with SWAR on one 8-byte load, and the time and offset fields are checked and decoded in one pass (dates about 1.5x, timestamps about 2x faster).</li>
-<li>
-<code>ZUF_DATETIME_MAX_CHARS</code> is now 42 and covers every <code>int32_t</code> year, as the other <code>ZUF_*_MAX_CHARS</code> capacities do.</li>
-<li>The formatters return before <code>memcpy()</code> when <code>cap == 0</code>, so measuring with a <code>NULL</code> buffer no longer trips <code>-Wnonnull</code> under <code>_FORTIFY_SOURCE</code>.</li>
-<li>
-<code>zuf_hasher</code>’s 64-byte alignment is checked by a static assertion, and the public <code>ZUF_NUM_*</code> and <code>ZUF_FMT_*</code> flags are tied to their internal copies the same way.</li>
-<li>
-<code><a href="../reference/fast_base64_encode.html">fast_base64_decode()</a></code> allocates each result once, and <code><a href="../reference/fast_parse_date.html">fast_datetime_fields()</a></code> no longer looks up its columns per element.</li>
-<li>
-<code><a href="../reference/fast_info.html">fast_info()</a></code> reports build flags in a new <code>build</code> element.</li>
-<li>Removed the unused internal <code>zuf_int_mul128()</code>.</li>
-</ul></div>
-    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="zufast-010">zufast 0.1.0<a class="anchor" aria-label="anchor" href="#zufast-010"></a></h2>
-<ul><li>Header-only foundation: <code>&lt;zufast.h&gt;</code>, <code>zufast/version.h</code> and <code>zufast/status.h</code>, consumed through <code>LinkingTo: zufast</code> alone.</li>
+<ul><li>Initial CRAN release: a header-only library of small, fast, portable C99 primitives, used by other packages through <code>LinkingTo: zufast</code> alone.</li>
 <li>
-<code><a href="../reference/fast_info.html">fast_info()</a></code> reports the compiled header version.</li>
+<code>zufast/number.h</code>: correctly rounded parsing of <code>double</code>, <code>float</code> and 32/64-bit integers in any base 2 to 36 (with a JSON mode), through the vendored ffc.h, a C port of fast_float; shortest round-trip formatting in ECMAScript notation through the vendored Ryu; exact fixed-notation formatting and integer writers.</li>
 <li>
-<code>zufast/literal.h</code>: <code>zuf_parse_bool()</code> with per-spelling flags, <code>zuf_equals()</code>, <code>zuf_equals_ci()</code>, <code>zuf_skip_space()</code>, <code>zuf_trim_space()</code>.</li>
+<code>zufast/datetime.h</code>: ISO 8601 / RFC 3339 date and timestamp parsing to fields, calendar arithmetic exact over the whole <code>int32_t</code> day range, and RFC 3339 formatting.</li>
 <li>
-<code>zufast/bits.h</code>: binary16 and bfloat16 conversion, the <code>fits</code> predicates, endian loads, stores and byte swaps.</li>
+<code>zufast/literal.h</code> (booleans with per-spelling flags, literal matching, ASCII whitespace), <code>zufast/uuid.h</code>, <code>zufast/hex.h</code> and <code>zufast/base64.h</code> (strict, standard and URL alphabets), <code>zufast/hash.h</code> (XXH3 64- and 128-bit, one-shot and streaming, through the vendored xxHash), <code>zufast/bits.h</code> (binary16, bfloat16, endian helpers) and <code>zufast/utf8.h</code> (UTF-8 validation and code-point counting).</li>
+<li>R functions that exercise the C layer: <code><a href="../reference/fast_parse_double.html">fast_parse_double()</a></code>, <code><a href="../reference/fast_parse_double.html">fast_parse_integer()</a></code>, <code><a href="../reference/fast_format_double.html">fast_format_double()</a></code>, <code><a href="../reference/fast_parse_date.html">fast_parse_date()</a></code>, <code><a href="../reference/fast_parse_date.html">fast_parse_datetime()</a></code>, <code><a href="../reference/fast_parse_date.html">fast_datetime_fields()</a></code>, <code><a href="../reference/fast_format_datetime.html">fast_format_datetime()</a></code>, <code><a href="../reference/fast_hex_encode.html">fast_hex_encode()</a></code>, <code><a href="../reference/fast_hex_encode.html">fast_hex_decode()</a></code>, <code><a href="../reference/fast_base64_encode.html">fast_base64_encode()</a></code>, <code><a href="../reference/fast_base64_encode.html">fast_base64_decode()</a></code>, <code><a href="../reference/fast_hash.html">fast_hash()</a></code>, <code><a href="../reference/fast_utf8_valid.html">fast_utf8_valid()</a></code> and <code><a href="../reference/fast_info.html">fast_info()</a></code>.</li>
 <li>
-<code>zufast/utf8.h</code> and <code><a href="../reference/fast_utf8_valid.html">fast_utf8_valid()</a></code>: UTF-8 validation and code-point counting with Hoehrmann’s DFA.</li>
-<li>
-<code>zufast/hex.h</code>, <code>zufast/base64.h</code> and <code>zufast/uuid.h</code>: hex and strict Base64 (standard and URL alphabets, optional padding) codecs and UUID parsing and formatting; <code><a href="../reference/fast_hex_encode.html">fast_hex_encode()</a></code>, <code><a href="../reference/fast_hex_encode.html">fast_hex_decode()</a></code>, <code><a href="../reference/fast_base64_encode.html">fast_base64_encode()</a></code> and <code><a href="../reference/fast_base64_encode.html">fast_base64_decode()</a></code>.</li>
-<li>
-<code>zufast/datetime.h</code>: ISO 8601 / RFC 3339 date and timestamp parsing to fields, Neri-Schneider calendar arithmetic exact over the whole <code>int32_t</code> day range, and RFC 3339 formatting; <code><a href="../reference/fast_parse_date.html">fast_parse_date()</a></code>, <code><a href="../reference/fast_parse_date.html">fast_parse_datetime()</a></code>, <code><a href="../reference/fast_parse_date.html">fast_datetime_fields()</a></code> and <code><a href="../reference/fast_format_datetime.html">fast_format_datetime()</a></code>.</li>
-<li>
-<code>zufast/number.h</code>: correctly rounded parsing of <code>double</code>, <code>float</code> and 32/64-bit integers in any base 2 to 36 through the vendored <code>ffc.h</code> (v26.09.01), with JSON, leading-plus, whitespace and decimal-point options; exact fixed-notation formatting; integer writers. <code><a href="../reference/fast_parse_double.html">fast_parse_double()</a></code> and <code><a href="../reference/fast_parse_double.html">fast_parse_integer()</a></code>.</li>
-<li>Vendoring tooling: <code>tools/vendor/{fetch,record,verify}</code>, the manifest and checksums, and <code>tools/run-parse-corpus</code>.</li>
-<li>Shortest round-trip formatting of <code>double</code> and <code>float</code> through the vendored Ryu (v2.0) in ECMAScript <code>Number::toString</code> notation: <code>zuf_format_f64()</code>, <code>zuf_format_f32()</code>, the <code>_opt</code> variants with <code>ZUF_FMT_SCIENTIFIC</code> and <code>ZUF_FMT_TRAILING_ZERO</code>, <code>zuf_decimal_f64()</code>, <code>zuf_decimal_f32()</code>; <code><a href="../reference/fast_format_double.html">fast_format_double()</a></code>.</li>
-<li>
-<code>zufast/hash.h</code>: XXH3 64- and 128-bit hashing through the vendored <code>xxhash.h</code> (v0.8.4), one-shot and streaming with a stack-allocatable <code>zuf_hasher</code>; <code><a href="../reference/fast_hash.html">fast_hash()</a></code>. XXH3 is not a cryptographic hash.</li>
-<li>The consumer fixture <code>tools/zufasttest</code> and the <code>consumer</code> workflow: a package using zufast through <code>LinkingTo</code> alone builds, checks without a compiled-code NOTE, exports nothing but its init function, and keeps working with zufast uninstalled.</li>
-<li>
-<code>tools/run-symbol-audit</code>, libFuzzer targets for every parser (<code>tools/fuzz</code>, <code>tools/run-fuzz</code>, the <code>hardening</code> workflow) and the <code>native-checks</code> workflow.</li>
-<li>
-<code>README.md</code> gives the consumer recipe in full; <code><a href="../articles/linking.html">vignette("linking")</a></code> states the source-compatibility contract and the two deliberate differences from base R; <code>LICENSE.note</code>, <code>cran-comments.md</code>; <code>tools/benchmarks.R</code>, <code>tools/run-benchmarks</code> and first measurements in <code>.agents/benchmarks.md</code>.</li>
+<code><a href="../articles/linking.html">vignette("linking")</a></code> gives the consumer recipe and the source-compatibility contract.</li>
 </ul></div>
-  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
-    </nav></aside></div>
+  </main></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Pedro Z.</p>
+  <p>Developed by Pedro Baltazar.</p>
 </div>
 
 <div class="pkgdown-footer-right">

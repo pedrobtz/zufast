@@ -23,6 +23,15 @@ shortest formatting is [Ryu](https://github.com/ulfjack/ryu), hashing is
 
 ## Installation
 
+Install the released version from CRAN:
+
+``` r
+
+install.packages("zufast")
+```
+
+or the development version from GitHub:
+
 ``` r
 
 # install.packages("pak")
