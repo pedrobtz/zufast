@@ -22,8 +22,9 @@ written as R writes them.
 \description{
 Writes each value with the fewest significant digits that parse back to
 exactly the same double, in the notation of ECMAScript's
-\code{Number.prototype.toString()}: positional for decimal exponents from -7 to
-20 (\code{0.1}, \code{123.5}, \code{100}), \code{d.ddde+x} otherwise (\code{1e+21}, \code{1e-7}).
+\code{Number.prototype.toString()}: positional for decimal exponents from -6 to
+20 (\code{0.000001}, \code{0.1}, \code{123.5}, \code{100}), \code{d.ddde+x} otherwise (\code{1e+21},
+\code{1e-7}).
 }
 \details{
 This differs from \code{\link[=as.character]{as.character()}}, which writes 15 significant digits:

@@ -14,6 +14,7 @@ test_that("every form of design 10.1 parses to the right fields", {
   }
   expect_identical(pdt("2024-01-01T00:00:00+01")[[3]][8], 3600)
   expect_identical(pdt("2024-01-01T00:00:00-23:59")[[3]][8], -86340)
+  # -00:00 is not told apart from +00:00 (documented at has_offset)
   expect_identical(pdt("2024-01-01T00:00:00-00:00")[[3]][c(8, 10)], c(0, 1))
   expect_identical(pdt("2024-01-01 10:00:00")[[3]][4], 10)
   expect_identical(pdt("2024-01-01t10:00:00")[[3]][4], 10)
@@ -52,7 +53,8 @@ test_that("every invalid class is rejected", {
   expect_identical(pdt("2024-01-01T10:0")[[1]], INCOMPLETE)
   expect_identical(pdt("2024-01-01T10:00:00.")[[1]], INCOMPLETE)
   expect_identical(pdt("2024-01-01T10:00:00+01:")[[1]], INCOMPLETE)
-  expect_identical(pdt("")[[1]], INCOMPLETE)
+  expect_identical(pdt("")[1:2], list(INVALID, 0L))   # an empty span is not inside a value
+  expect_identical(pdt("", TRUE)[1:2], list(INVALID, 0L))
   expect_identical(pdt("x")[[1]], INVALID)
 })
 
@@ -214,6 +216,10 @@ test_that("fast_format_datetime() writes UTC RFC 3339", {
   expect_identical(fast_format_datetime(.POSIXct(0.25, tz = "UTC"), digits = 9),
                    "1970-01-01T00:00:00.250000000Z")
   expect_identical(fast_format_datetime(as.Date(c("2024-03-01", NA))), c("2024-03-01", NA))
+  # finite but beyond the int32_t day range of the calendar: NA, as documented
+  expect_identical(fast_format_datetime(.POSIXct(c(1.8e14, 1.9e14), tz = "UTC")),
+                   c("+5705942-12-07T08:00:00Z", NA))
+  expect_identical(fast_format_datetime(as.Date(c(2^31 - 1, 2^31))), c("+5881580-07-11", NA))
 
   set.seed(6)
   secs <- runif(500, -6e10, 2.5e11)
