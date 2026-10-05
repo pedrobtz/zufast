@@ -9,35 +9,61 @@
 # volatile in ffc_rounds_to_nearest(): every table must be const, so that it
 # is read-only and no consumer translation unit carries a writable copy
 # (#23). Run from the package root.
+#
+# First a canary: the probe with a planted printf() must fail the audit, so a
+# pass means the scan looked.
 set -eu
 
 ROOT=$(pwd)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-# What R CMD check's "checking compiled code" looks for (tools:::check_so_symbols):
-# termination, the C stdio streams and printing, and the C library's RNG.
-FORBIDDEN='abort|__assert_fail|__assert_rtn|_assert|exit|_exit|_Exit|quick_exit|printf|vprintf|puts|putchar|stdout|stderr|__stdoutp|__stderrp|_stdout|_stderr|rand|srand|random|srandom|rand_r|drand48|srand48'
+# The scan is R's own: tools:::check_so_symbols() is what R CMD check's
+# "checking compiled code" runs, with this platform's table of symbol names
+# (glibc's fortified __printf_chk, Darwin's leading underscores, sprintf and
+# the C RNG included), so the audit cannot drift from the check it predicts.
+# A hand-written list missed __printf_chk, which R's default Linux flags
+# (-D_FORTIFY_SOURCE) turn printf() into; zubin found it first.
+audit() {   # $1 label, $2 source; prints the hits, returns 1 when there are any
+    rm -f "$TMP"/*.o "$TMP"/*.so
+    cp "$2" "$TMP/probe.c"
+    (cd "$TMP" && PKG_CPPFLAGS="-I$ROOT/inst/include" R CMD SHLIB -o probe.so probe.c >build.log 2>&1) || {
+        cat "$TMP/build.log"; echo "FAIL: the probe did not build ($1)"; exit 1; }
+    Rscript -e '
+        so <- commandArgs(TRUE)[1L]; label <- commandArgs(TRUE)[2L]
+        tab <- tools:::check_so_symbols(so)
+        if (is.null(tab)) stop("no system ABI: the audit cannot run here")
+        hits <- unique(tab[, "ssname"])
+        if (length(hits) || length(attr(tab, "nonAPI"))) {
+            cat(sprintf("(%s) the probe references: %s\n", label,
+                        paste(c(hits, attr(tab, "nonAPI")), collapse = ", ")))
+            quit(status = 1L)
+        }
+        cat(sprintf("ok (%s): no symbol R CMD check reports\n", label))
+    ' "$TMP/probe.so" "$1"
+}
 
-cp tools/abi/probe-all.c "$TMP/probe.c"
+{ cat tools/abi/probe-all.c
+  printf '#include <stdio.h>\nint zuf_probe_canary(void);\nint zuf_probe_canary(void) { return printf("%%d\\n", zuf_probe_all()); }\n'
+} > "$TMP/canary.c"
+unset R_MAKEVARS_USER || true
+if audit canary "$TMP/canary.c" >/dev/null; then
+    echo "FAIL canary: a planted printf() passed the audit"; exit 1
+fi
+echo "ok (canary): a planted printf() fails the audit"
+
 fail=0
 for level in default O0; do
-    rm -f "$TMP"/*.o "$TMP"/*.so
     if [ "$level" = O0 ]; then
         printf 'CFLAGS = -O0 -g\n' > "$TMP/Makevars"
         export R_MAKEVARS_USER="$TMP/Makevars"
     else
         unset R_MAKEVARS_USER || true
     fi
-    (cd "$TMP" && PKG_CPPFLAGS="-I$ROOT/inst/include" R CMD SHLIB -o probe.so probe.c >build.log 2>&1) || {
-        cat "$TMP/build.log"; echo "FAIL: the probe did not build ($level)"; exit 1; }
-    case "$(uname -s)" in
-        Darwin) syms=$(nm -u "$TMP/probe.so" | sed 's/^_//') ;;
-        *)      syms=$(nm -u "$TMP/probe.so" | awk '{print $NF}' | sed 's/@.*//') ;;
-    esac
-    # Writable data in the object: local assembler labels (ltmpN, L..., .L...)
-    # are not symbols of the code; the static volatile `fmin` is ffc's
-    # rounding-mode probe and must stay writable.
+    audit "$level" tools/abi/probe-all.c || fail=1
+    # Writable data in the object audit() just built: local assembler labels
+    # (ltmpN, L..., .L...) are not symbols of the code; the static volatile
+    # `fmin` is ffc's rounding-mode probe and must stay writable.
     wdata=$(nm "$TMP/probe.o" | awk '$2 ~ /^[dDbB]$/ { print $3 }' |
         grep -vE '^(ltmp[0-9]+|l_.*|L.*|\..*)$' |
         grep -vE '^_?(ffc_rounds_to_nearest\.)?fmin(\.[0-9]+)?$' || true)
@@ -45,14 +71,8 @@ for level in default O0; do
         echo "FAIL ($level): writable data in the probe object:"
         printf '    %s\n' $wdata
         fail=1
-    fi
-    hits=$(printf '%s\n' "$syms" | grep -xE "($FORBIDDEN)" || true)
-    if [ -n "$hits" ]; then
-        echo "FAIL ($level): the probe references:"
-        printf '    %s\n' $hits
-        fail=1
     else
-        echo "ok ($level): $(printf '%s\n' "$syms" | grep -c . | tr -d ' ') undefined symbols, none forbidden"
+        echo "ok ($level): no writable data in the probe object"
     fi
 done
 [ "$fail" -eq 0 ] && echo "symbol audit passed" || { echo "symbol audit FAILED"; exit 1; }
