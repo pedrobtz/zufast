@@ -6,7 +6,10 @@
 # * https://r-pkgs.org/testing-design.html#sec-tests-files-overview
 # * https://testthat.r-lib.org/articles/special-files.html
 
-library(testthat)
-library(zufast)
-
-test_check("zufast")
+# testthat is in Suggests: without it (CRAN's NOSUGGESTS flavor) the tests
+# are skipped rather than failing.
+if (requireNamespace("testthat", quietly = TRUE)) {
+  library(testthat)
+  library(zufast)
+  test_check("zufast")
+}

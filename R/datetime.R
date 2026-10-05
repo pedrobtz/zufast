@@ -56,7 +56,9 @@ fast_datetime_fields <- function(x) {
 #'   writes the shortest of 0, 3 or 6 digits that represents the time at
 #'   microsecond resolution, which is about the precision a `POSIXct` double
 #'   holds for present-day times.
-#' @return A character vector, `NA` where `x` is `NA` or not finite.
+#' @return A character vector, `NA` where `x` is `NA`, not finite, or
+#'   outside the calendar's range (a day count beyond the `int32_t` range,
+#'   about plus or minus 5.8 million years).
 #' @export
 #' @examples
 #' fast_format_datetime(as.POSIXct("2024-03-01 12:30:00.25", tz = "UTC"))

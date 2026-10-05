@@ -1,10 +1,14 @@
 Package: zufast
 Title: Fast Portable C Primitives for Parsing and Formatting Data
-Version: 0.1.0.9000
+Version: 0.1.0
 Authors@R: 
-    c(person("Pedro", "Z", , "pedrobtz@gmail.com", role = c("aut", "cre")),
+    c(person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
       person("Bjoern", "Hoehrmann", role = "cph",
              comment = "UTF-8 decoder state table in inst/include/zufast/utf8.h"),
+      person("Daniel", "Lemire", role = "cph",
+             comment = "fast_float, ported to C as ffc.h"),
+      person("João Paulo", "Magalhaes", role = "cph",
+             comment = "fast_float, ported to C as ffc.h"),
       person("The fast_float authors", role = "cph",
              comment = "fast_float, ported to C as ffc.h"),
       person("Koleman", "Nix", role = "cph",
@@ -19,7 +23,7 @@ Description: A header-only library of small, fast, portable C99 primitives
     validation. Other packages use it through 'LinkingTo' alone; the R
     functions exist to test, benchmark and demonstrate the C layer.
 License: MIT + file LICENSE
-Copyright: See inst/COPYRIGHTS and tools/vendor/manifest.tsv.
+Copyright: See inst/COPYRIGHTS.
 URL: https://pedrobtz.github.io/zufast/, https://github.com/pedrobtz/zufast
 BugReports: https://github.com/pedrobtz/zufast/issues
 Depends: 

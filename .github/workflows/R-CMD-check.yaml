@@ -22,3 +22,7 @@ jobs:
       # Quick on each push to a pull request, full after merge. The
       # `full-ci` label runs the full set on a pull request before merging.
       profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
+      # CRAN's NOSUGGESTS and NOLD flavors (full profile only). NOLD matters
+      # for a number parser: R built without long double.
+      nosuggests: true
+      nold: true

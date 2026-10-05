@@ -24,14 +24,17 @@ include/zufast/vendor/ffc.h -- decimal number parsing and fixed formatting
   Licence: MIT, chosen from the MIT / Apache-2.0 / Boost-1.0 options.
   Licence text: licenses/ffc-LICENSE.
 
-  Patched:
+  Patched (the tools/ directory is in the source repository,
+  https://github.com/pedrobtz/zufast, not in the package):
     tools/patches/ffc/0001-add-linkage-macros.patch adds FFC_LINKAGE and
       FFC_LINKAGE_EXTERN so that every public function can be made static;
     tools/patches/ffc/0002-drop-float-equal-pragmas.patch removes the
       pragmas that silence -Wfloat-equal, which R CMD check reports;
     tools/patches/ffc/0003-u64-overflow-at-max-digits.patch rejects
       unsigned 64-bit integers that wrap around 2^64 more than once, as
-      fast_float 8.3 does.
+      fast_float 8.3 does;
+    tools/patches/ffc/0004-const-tables.patch declares the five lookup
+      tables const, so that they are read-only data.
 
 ------------------------------------------------------------------------------
 include/zufast/vendor/ryu/ -- shortest round-trip digits of double and float
@@ -43,7 +46,7 @@ include/zufast/vendor/ryu/ -- shortest round-trip digits of double and float
   Licence: Boost Software License 1.0, chosen from the Apache-2.0 /
   Boost-1.0 options. Licence text: licenses/ryu-LICENSE.
 
-  Patched: tools/patches/ryu/0001-header-only.patch installs d2s.c and
+  Patched (in the source repository): tools/patches/ryu/0001-header-only.patch installs d2s.c and
   f2s.c as d2s_impl.h and f2s_impl.h with static inline entry points,
   relative includes, and assert() routed through RYU_ASSERT.
 
@@ -55,9 +58,18 @@ include/zufast/vendor/xxhash.h -- XXH3 hashing
   Only xxhash.h is vendored; the xxhsum command-line tool in the same
   repository is GPL-2 and is not included.
 
-  Copyright (c) 2012-2021 Yann Collet.
+  Copyright (c) 2012-2023 Yann Collet.
   Licence: BSD 2-Clause. Licence text: licenses/xxhash-LICENSE.
   Not patched.
 
-  tests/testthat/fixtures/xxh3-vectors.tsv is a subset of xxHash's
-  tests/sanity_test_vectors.h, under the same licence.
+  tests/testthat/fixtures/xxh3-vectors.tsv lists XXH3 hash values (input
+  length, seed, hash) for xxHash's sanity buffer, a subset of those in
+  xxHash's tests/sanity_test_vectors.h. That file carries no licence
+  notice of its own; it is the output of tests/sanity_test_vectors_generator.c
+  (GPL-2.0-only), which is not included. The fixture copies no code, only
+  computed values, which the BSD-2-Clause xxhash.h above reproduces.
+  The input those values hash is rebuilt by sanity_buffer() in
+  src/zufast_test.c, an independent implementation of the same three-step
+  fill (start at 2654435761, emit the top byte, multiply by
+  11400714785074694797, repeat), which must match exactly for the
+  published values to apply; no code is copied from xxHash's test programs.

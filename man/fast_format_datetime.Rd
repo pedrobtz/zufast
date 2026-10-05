@@ -15,7 +15,9 @@ microsecond resolution, which is about the precision a \code{POSIXct} double
 holds for present-day times.}
 }
 \value{
-A character vector, \code{NA} where \code{x} is \code{NA} or not finite.
+A character vector, \code{NA} where \code{x} is \code{NA}, not finite, or
+outside the calendar's range (a day count beyond the \code{int32_t} range,
+about plus or minus 5.8 million years).
 }
 \description{
 Writes a \code{POSIXct} as \verb{YYYY-MM-DDTHH:MM:SS[.fff]Z} in UTC, or a \code{Date} as

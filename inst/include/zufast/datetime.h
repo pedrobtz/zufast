@@ -19,7 +19,8 @@
  * ptr semantics follow std::from_chars: on ZUF_OK, r.ptr is one past the
  * last byte consumed; on ZUF_ERR_INVALID it equals `first`. On
  * ZUF_ERR_INCOMPLETE (the input ends inside a value, as in "2024-01") it
- * equals `last`. A date followed by a byte that cannot start a time (for
+ * equals `last`. An empty span holds no value to end inside, so it is
+ * ZUF_ERR_INVALID, as for the other parsers. A date followed by a byte that cannot start a time (for
  * example "2024-01-01,") parses as a bare date with r.ptr after the day;
  * once a separator is followed by a digit, the time must be well formed.
  *
@@ -47,7 +48,10 @@ typedef struct {
     uint32_t nanosecond;
     int32_t  offset_seconds;   /* meaningful only when has_offset */
     bool     has_time;         /* false for a bare date */
-    bool     has_offset;       /* Z or a numeric offset was present */
+    bool     has_offset;       /* Z or a numeric offset was present; "-00:00"
+                                  (RFC 3339's "local offset unknown") parses
+                                  as offset 0 with has_offset true, the same
+                                  as "Z" and "+00:00", and formats as "Z" */
 } zuf_datetime;
 
 typedef struct { int64_t seconds; uint32_t nanoseconds; } zuf_timestamp;
@@ -187,8 +191,10 @@ ZUF_INLINE zuf_result zuf_parse_date(const char *first, const char *last, zuf_da
     const unsigned char *p = (const unsigned char *)first, *end = (const unsigned char *)last;
     uint32_t year, month;
     int day;
-    if (end - p < 10 || !zuf_int_swar_year_month(p, &year, &month) || (day = zuf_int_two_digits(p + 8)) < 0)
+    if (end - p < 10 || !zuf_int_swar_year_month(p, &year, &month) || (day = zuf_int_two_digits(p + 8)) < 0) {
+        if (p == end) return zuf_int_result(first, ZUF_ERR_INVALID);
         return zuf_int_field_error(p, end, "dddd-dd-dd", first, last);
+    }
     if (month < 1 || month > 12 || day < 1 || (uint32_t)day > zuf_days_in_month((int32_t)year, month))
         return zuf_int_result(first, ZUF_ERR_INVALID);
     zuf_int_clear_datetime(out);

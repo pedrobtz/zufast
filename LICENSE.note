@@ -14,5 +14,5 @@ zufast is header-only, every package that uses `LinkingTo: zufast` compiles
 this code into its own shared object, which is a redistribution these
 licences permit with their notices kept. inst/COPYRIGHTS gives the copyright
 holders, the pinned upstream commits and the patches applied;
-tools/vendor/manifest.tsv in the source repository records the same, with
-checksums.
+tools/vendor/manifest.tsv and tools/patches/ in the source repository,
+https://github.com/pedrobtz/zufast, record the same, with checksums.

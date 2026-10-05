@@ -4,7 +4,11 @@
 # flags, at R's optimisation level and at -O0, and fails if it references any
 # symbol R CMD check reports in compiled code. Because every zufast function
 # is compiled into each consumer, a hit here would be a NOTE in every
-# consumer's check, not in zufast's. Run from the package root.
+# consumer's check, not in zufast's. It also fails if the probe object holds
+# writable data (an nm d/D/b/B symbol) other than ffc's one deliberate
+# volatile in ffc_rounds_to_nearest(): every table must be const, so that it
+# is read-only and no consumer translation unit carries a writable copy
+# (#23). Run from the package root.
 #
 # First a canary: the probe with a planted printf() must fail the audit, so a
 # pass means the scan looked.
@@ -57,5 +61,18 @@ for level in default O0; do
         unset R_MAKEVARS_USER || true
     fi
     audit "$level" tools/abi/probe-all.c || fail=1
+    # Writable data in the object audit() just built: local assembler labels
+    # (ltmpN, L..., .L...) are not symbols of the code; the static volatile
+    # `fmin` is ffc's rounding-mode probe and must stay writable.
+    wdata=$(nm "$TMP/probe.o" | awk '$2 ~ /^[dDbB]$/ { print $3 }' |
+        grep -vE '^(ltmp[0-9]+|l_.*|L.*|\..*)$' |
+        grep -vE '^_?(ffc_rounds_to_nearest\.)?fmin(\.[0-9]+)?$' || true)
+    if [ -n "$wdata" ]; then
+        echo "FAIL ($level): writable data in the probe object:"
+        printf '    %s\n' $wdata
+        fail=1
+    else
+        echo "ok ($level): no writable data in the probe object"
+    fi
 done
 [ "$fail" -eq 0 ] && echo "symbol audit passed" || { echo "symbol audit FAILED"; exit 1; }
