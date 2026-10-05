@@ -2,6 +2,11 @@
 
 ## zufast (development version)
 
+- `tools/run-symbol-audit` scans with R’s own
+  `tools:::check_so_symbols()` instead of a hand-written list, which
+  missed glibc’s `__printf_chk` (what `printf()` becomes under R’s
+  default `-D_FORTIFY_SOURCE`) and `sprintf`. A planted `printf()`
+  canary must fail the audit before the real run.
 - `zuf_base64_encode()` with `ZUF_B64_NO_PAD` returns `SIZE_MAX` when
   the encoded length does not fit a `size_t`, as the padded form does;
   before, the length wrapped and a measuring call could write through

@@ -41,6 +41,8 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="zufast-development-version">zufast (development version)<a class="anchor" aria-label="anchor" href="#zufast-development-version"></a></h2>
 <ul><li>
+<code>tools/run-symbol-audit</code> scans with R’s own <code>tools:::check_so_symbols()</code> instead of a hand-written list, which missed glibc’s <code>__printf_chk</code> (what <code>printf()</code> becomes under R’s default <code>-D_FORTIFY_SOURCE</code>) and <code>sprintf</code>. A planted <code>printf()</code> canary must fail the audit before the real run.</li>
+<li>
 <code>zuf_base64_encode()</code> with <code>ZUF_B64_NO_PAD</code> returns <code>SIZE_MAX</code> when the encoded length does not fit a <code>size_t</code>, as the padded form does; before, the length wrapped and a measuring call could write through <code>NULL</code> (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
 <li>
 <code>ZUF_NUM_JSON</code> now applies to the integer parsers: a leading zero, a leading <code>+</code> (even with <code>ZUF_NUM_LEADING_PLUS</code>) and any base other than 10 are <code>ZUF_ERR_INVALID</code>, as for floating point (<a href="https://github.com/pedrobtz/zufast/issues/21" class="external-link">#21</a>).</li>
