@@ -18,16 +18,22 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Pedro Z \email{pedrobtz@gmail.com}
+\strong{Maintainer}: Pedro Baltazar \email{pedrobtz@gmail.com} [copyright holder]
 
 Authors:
 \itemize{
-  \item Pedro Z \email{pedrobtz@gmail.com}
+  \item Pedro Baltazar \email{pedrobtz@gmail.com} [copyright holder]
 }
 
 Other contributors:
 \itemize{
   \item Bjoern Hoehrmann (UTF-8 decoder state table in inst/include/zufast/utf8.h) [copyright holder]
+  \item Daniel Lemire (fast_float, ported to C as ffc.h) [copyright holder]
+  \item João Paulo Magalhaes (fast_float, ported to C as ffc.h) [copyright holder]
+  \item The fast_float authors (fast_float, ported to C as ffc.h) [copyright holder]
+  \item Koleman Nix (ffc.h, the C port of fast_float) [copyright holder]
+  \item Ulf Adams (Ryu) [copyright holder]
+  \item Yann Collet (xxHash) [copyright holder]
 }
 
 }

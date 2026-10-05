@@ -34,6 +34,10 @@ jobs:
   gctorture:
     uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
     with:
+      # At R's step of 20 the suite (exhaustive codec and calendar walks)
+      # outgrew the 2-hour job limit and was cancelled on main; 100 keeps
+      # every path under collection pressure and finishes.
+      step: 100
       profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
 
   rchk:
