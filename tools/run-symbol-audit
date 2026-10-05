@@ -4,7 +4,11 @@
 # flags, at R's optimisation level and at -O0, and fails if it references any
 # symbol R CMD check reports in compiled code. Because every zufast function
 # is compiled into each consumer, a hit here would be a NOTE in every
-# consumer's check, not in zufast's. Run from the package root.
+# consumer's check, not in zufast's. It also fails if the probe object holds
+# writable data (an nm d/D/b/B symbol) other than ffc's one deliberate
+# volatile in ffc_rounds_to_nearest(): every table must be const, so that it
+# is read-only and no consumer translation unit carries a writable copy
+# (#23). Run from the package root.
 set -eu
 
 ROOT=$(pwd)
@@ -31,6 +35,17 @@ for level in default O0; do
         Darwin) syms=$(nm -u "$TMP/probe.so" | sed 's/^_//') ;;
         *)      syms=$(nm -u "$TMP/probe.so" | awk '{print $NF}' | sed 's/@.*//') ;;
     esac
+    # Writable data in the object: local assembler labels (ltmpN, L..., .L...)
+    # are not symbols of the code; the static volatile `fmin` is ffc's
+    # rounding-mode probe and must stay writable.
+    wdata=$(nm "$TMP/probe.o" | awk '$2 ~ /^[dDbB]$/ { print $3 }' |
+        grep -vE '^(ltmp[0-9]+|l_.*|L.*|\..*)$' |
+        grep -vE '^_?(ffc_rounds_to_nearest\.)?fmin(\.[0-9]+)?$' || true)
+    if [ -n "$wdata" ]; then
+        echo "FAIL ($level): writable data in the probe object:"
+        printf '    %s\n' $wdata
+        fail=1
+    fi
     hits=$(printf '%s\n' "$syms" | grep -xE "($FORBIDDEN)" || true)
     if [ -n "$hits" ]; then
         echo "FAIL ($level): the probe references:"
