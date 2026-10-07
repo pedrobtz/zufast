@@ -158,6 +158,50 @@
 <span><span class="fu"><a href="reference/fast_hash.html">fast_hash</a></span><span class="op">(</span><span class="st">"hello"</span>, bits <span class="op">=</span> <span class="fl">128</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/fast_info.html">fast_info</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Two deliberate differences from base R: <code><a href="reference/fast_parse_double.html">fast_parse_double()</a></code> is correctly rounded where <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code> is not (they differ in the last bit for about one decimal in five thousand), and <code><a href="reference/fast_format_double.html">fast_format_double()</a></code> writes the shortest digits that round-trip where <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code> writes fifteen significant digits.</p>
+<div class="section level3">
+<h3 id="a-benchmark">A benchmark<a class="anchor" aria-label="anchor" href="#a-benchmark"></a>
+</h3>
+<p>One million ordinary decimals, parsed by <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code>, by <a href="https://cran.r-project.org/package=RcppFastFloat" class="external-link">RcppFastFloat</a> (the C++ <code>fast_float</code> behind an R wrapper) and by zufast, timed with <code>bench::mark()</code>:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%.6f"</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1e6</span>, <span class="op">-</span><span class="fl">1000</span>, <span class="fl">1000</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">bench</span><span class="fu">::</span><span class="fu">mark</span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
+<span>  <span class="fu">RcppFastFloat</span><span class="fu">::</span><span class="fu">as.double2</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="reference/fast_parse_double.html">fast_parse_double</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
+<span>  check <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  min_iterations <span class="op">=</span> <span class="fl">20</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr>
+<th>expression</th>
+<th align="right">median</th>
+<th align="right">iterations/sec</th>
+<th align="right">memory</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>as.numeric(x)</code></td>
+<td align="right">84.8 ms</td>
+<td align="right">11.8</td>
+<td align="right">7.63 MB</td>
+</tr>
+<tr>
+<td><code>RcppFastFloat::as.double2(x)</code></td>
+<td align="right">34.3 ms</td>
+<td align="right">29.1</td>
+<td align="right">13.49 MB</td>
+</tr>
+<tr>
+<td><code>fast_parse_double(x)</code></td>
+<td align="right">27.8 ms</td>
+<td align="right">36.0</td>
+<td align="right">7.64 MB</td>
+</tr>
+</tbody>
+</table>
+<p>Apple M1, R 4.6.1, zufast 0.1.0, RcppFastFloat 0.0.6, Apple clang 21. zufast and <code>fast_float</code> are the same algorithm and return identical doubles; what separates them here is the R wrapper and the memory it allocates. <code>tools/benchmarks.R</code> in the repository measures the other areas against their usual comparisons.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="consumers">Consumers<a class="anchor" aria-label="anchor" href="#consumers"></a>
