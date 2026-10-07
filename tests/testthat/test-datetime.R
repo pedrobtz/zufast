@@ -219,7 +219,10 @@ test_that("fast_format_datetime() writes UTC RFC 3339", {
   # finite but beyond the int32_t day range of the calendar: NA, as documented
   expect_identical(fast_format_datetime(.POSIXct(c(1.8e14, 1.9e14), tz = "UTC")),
                    c("+5705942-12-07T08:00:00Z", NA))
-  expect_identical(fast_format_datetime(as.Date(c(2^31 - 1, 2^31))), c("+5881580-07-11", NA))
+  # origin: as.Date.numeric() has no default origin before R 4.3, and DESCRIPTION
+  # declares R >= 4.1.
+  expect_identical(fast_format_datetime(as.Date(c(2^31 - 1, 2^31), origin = "1970-01-01")),
+                   c("+5881580-07-11", NA))
 
   set.seed(6)
   secs <- runif(500, -6e10, 2.5e11)

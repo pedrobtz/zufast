@@ -26,3 +26,12 @@ jobs:
       # for a number parser: R built without long double.
       nosuggests: true
       nold: true
+      # r-actions' default runners, plus Windows on R-devel: CRAN's incoming
+      # pretest checks Windows on R-devel, and nothing else in CI does (the
+      # containers are Linux).
+      runners: >-
+        [{"os": "macos-latest", "r": "release"},
+         {"os": "windows-latest", "r": "release"},
+         {"os": "windows-latest", "r": "devel"},
+         {"os": "ubuntu-latest", "r": "release"},
+         {"os": "ubuntu-latest", "r": "oldrel-1"}]
