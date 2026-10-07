@@ -36,4 +36,4 @@
   : Information about the compiled zufast headers
 - [`zufast`](https://pedrobtz.github.io/zufast/reference/zufast-package.md)
   [`zufast-package`](https://pedrobtz.github.io/zufast/reference/zufast-package.md)
-  : zufast: Fast Portable C Primitives for Parsing and Formatting Data
+  : zufast: Fast Portable 'C' Primitives for Parsing and Formatting Data

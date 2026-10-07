@@ -189,7 +189,7 @@ ffc.h, Boost 1.0 for Ryu, BSD 2-Clause for xxHash); see
   : Information about the compiled zufast headers
 - [`zufast`](https://pedrobtz.github.io/zufast/reference/zufast-package.md)
   [`zufast-package`](https://pedrobtz.github.io/zufast/reference/zufast-package.md)
-  : zufast: Fast Portable C Primitives for Parsing and Formatting Data
+  : zufast: Fast Portable 'C' Primitives for Parsing and Formatting Data
 
 # Articles
 

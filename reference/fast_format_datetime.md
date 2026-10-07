@@ -35,7 +35,7 @@ minus 5.8 million years).
 fast_format_datetime(as.POSIXct("2024-03-01 12:30:00.25", tz = "UTC"))
 #> [1] "2024-03-01T12:30:00.250Z"
 fast_format_datetime(Sys.time(), digits = 0)
-#> [1] "2026-10-05T21:28:58Z"
+#> [1] "2026-10-07T08:58:22Z"
 fast_format_datetime(as.Date("2024-03-01"))
 #> [1] "2024-03-01"
 ```
