@@ -10,6 +10,7 @@ NUL
 Parsers
 Paulo
 Rcpp
+RcppFastFloat
 UUID
 UUIDs
 XXH
