@@ -131,6 +131,35 @@ one decimal in five thousand), and `fast_format_double()` writes the
 shortest digits that round-trip where `as.character()` writes fifteen
 significant digits.
 
+### A benchmark
+
+One million ordinary decimals, parsed by `as.numeric()`, by
+[RcppFastFloat](https://cran.r-project.org/package=RcppFastFloat) (the C++
+`fast_float` behind an R wrapper) and by zufast, timed with `bench::mark()`:
+
+``` r
+set.seed(1)
+x <- sprintf("%.6f", runif(1e6, -1000, 1000))
+bench::mark(
+  as.numeric(x),
+  RcppFastFloat::as.double2(x),
+  fast_parse_double(x),
+  check = function(a, b) isTRUE(all.equal(a, b)),
+  min_iterations = 20
+)
+```
+
+| expression | median | iterations/sec | memory |
+|---|---:|---:|---:|
+| `as.numeric(x)` | 84.8 ms | 11.8 | 7.63 MB |
+| `RcppFastFloat::as.double2(x)` | 34.3 ms | 29.1 | 13.49 MB |
+| `fast_parse_double(x)` | 27.8 ms | 36.0 | 7.64 MB |
+
+Apple M1, R 4.6.1, zufast 0.1.0, RcppFastFloat 0.0.6, Apple clang 21. zufast and
+`fast_float` are the same algorithm and return identical doubles; what separates
+them here is the R wrapper and the memory it allocates. `tools/benchmarks.R` in
+the repository measures the other areas against their usual comparisons.
+
 ## Consumers
 
 Adoption is tracked in each consumer's repository and waits on zufast
