@@ -126,23 +126,15 @@ unit that calls every public function with R’s own flags.</li>
 </div>
 </div>
 <div class="section level2">
-<h2 id="the-contract-source-compatibility-not-abi">The contract: source compatibility, not ABI<a class="anchor" aria-label="anchor" href="#the-contract-source-compatibility-not-abi"></a>
+<h2 id="versions">Versions<a class="anchor" aria-label="anchor" href="#versions"></a>
 </h2>
-<p>Because nothing crosses a shared-object boundary, there is no ABI to
-keep. Within major version 1:</p>
-<ul>
-<li>a function, type, macro or enumerator that exists in a release
-exists in every later release with the same meaning;</li>
-<li>enumerator values are permanent;</li>
-<li>a consumer built against an older zufast keeps working unchanged,
-because it carries its own copy of the code;</li>
-<li>a consumer that rebuilds against a newer zufast compiles without
-change.</li>
-</ul>
+<p>Because nothing crosses a shared-object boundary, there is no ABI: a
+consumer built against an older zufast keeps working when zufast is
+updated, because it carries its own copy of the code.</p>
 <p>Names prefixed <code>zuf_int_</code> or <code>ZUF_INT_</code> are
-internal: they are visible in the installed headers, but outside the
-promise. So is anything reached by including a vendored header under
-<code>zufast/vendor/</code> directly.</p>
+internal: they are visible in the installed headers, but are not part of
+the public interface. Neither is anything reached by including a
+vendored header under <code>zufast/vendor/</code> directly.</p>
 <p><code>ZUFAST_VERSION_MAJOR</code>, <code>ZUFAST_VERSION_MINOR</code>,
 <code>ZUFAST_VERSION_PATCH</code>, <code>ZUFAST_VERSION_NUMBER</code>
 and the string <code>ZUFAST_VERSION</code> let a consumer assert the
@@ -191,8 +183,12 @@ mode: the algorithm of fast_float, which is also GCC’s
 <code>std::from_chars</code>. R’s <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code> accumulates
 digits in <code>long double</code> and scales by a power of ten; it is
 not correctly rounded, and its result depends on whether R was built
-with <code>long double</code>. The two differ in the last bit for
-roughly one ordinary decimal in five thousand:</p>
+with <code>long double</code>. Where R has an 80-bit
+<code>long double</code>, as on x86-64, the two differ in the last bit
+for roughly one ordinary decimal in five thousand, and
+<code>"0.799012"</code> below is one of them. Where it has none, as on
+Apple Silicon, they agree on decimals of up to fifteen significant
+digits and differ on many of 16 or 17:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="st">"0.799012"</span></span>
 <span><span class="fu"><a href="../reference/fast_parse_double.html">fast_parse_double</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>

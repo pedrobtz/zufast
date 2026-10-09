@@ -37,4 +37,4 @@
   and
   [`fast_info()`](https://pedrobtz.github.io/zufast/reference/fast_info.md).
 - [`vignette("linking")`](https://pedrobtz.github.io/zufast/articles/linking.md)
-  gives the consumer recipe and the source-compatibility contract.
+  gives the consumer recipe.
