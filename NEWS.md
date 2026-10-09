@@ -22,5 +22,4 @@
   `fast_format_datetime()`, `fast_hex_encode()`, `fast_hex_decode()`,
   `fast_base64_encode()`, `fast_base64_decode()`, `fast_hash()`,
   `fast_utf8_valid()` and `fast_info()`.
-* `vignette("linking")` gives the consumer recipe and the
-  source-compatibility contract.
+* `vignette("linking")` gives the consumer recipe.

@@ -19,27 +19,34 @@ other R packages to use through `LinkingTo: zufast`:
 | `zufast/hash.h` | XXH3 64- and 128-bit hashing, one-shot and streaming (not cryptographic) |
 | `zufast/bits.h` | binary16 and bfloat16 conversion; endian loads, stores and swaps |
 | `zufast/utf8.h` | UTF-8 validation and code-point counting |
+| `zufast/status.h`, `zufast/version.h` | the shared `zuf_result` type and status codes; the version macros |
 
 Every function is `static inline`, allocates nothing, holds no state, uses no
-locale and may be called from any thread. Number parsing is
-[ffc.h](https://github.com/kolemannix/ffc.h) (a C port of fast_float),
-shortest formatting is [Ryu](https://github.com/ulfjack/ryu), hashing is
-[xxHash](https://github.com/Cyan4973/xxHash); the rest is package-owned.
+locale and may be called from any thread.
+
+zufast stands on the work of others, vendored at pinned releases:
+
+- number parsing is [ffc.h](https://github.com/kolemannix/ffc.h), Koleman
+  Nix's C port of [fast_float](https://github.com/fastfloat/fast_float) by
+  Daniel Lemire, João Paulo Magalhaes and contributors;
+- shortest round-trip formatting is [Ryu](https://github.com/ulfjack/ryu),
+  by Ulf Adams;
+- hashing is [xxHash](https://github.com/Cyan4973/xxHash), by Yann Collet;
+- UTF-8 validation uses the state table of Bjoern Hoehrmann's
+  [Flexible and Economical UTF-8 Decoder](http://bjoern.hoehrmann.de/utf-8/decoder/dfa/).
+
+The rest is package-owned.
 
 ## Installation
 
-Install the released version from CRAN:
-
-``` r
-install.packages("zufast")
-```
-
-or the development version from GitHub:
+zufast is not yet on CRAN. Install the development version from GitHub:
 
 ``` r
 # install.packages("pak")
 pak::pak("pedrobtz/zufast")
 ```
+
+Once it is released, install it from CRAN with `install.packages("zufast")`.
 
 ## Using zufast from C
 
@@ -103,13 +110,9 @@ reads about fifteen thousand lines of headers, so include only the areas
 you use where build time matters. The headers compile as C99 and as C++11, so
 cpp11 and Rcpp code can include them too.
 
-**Compatibility.** Within major version 1, everything a release declares
-stays, with the same meaning, and enumerator values never change; a package
-built against an older zufast keeps working, and rebuilding against a newer
-one needs no change. `ZUFAST_VERSION_MAJOR`, `_MINOR`, `_PATCH` and
+**Versions.** `ZUFAST_VERSION_MAJOR`, `_MINOR`, `_PATCH` and
 `ZUFAST_VERSION` say which headers you compiled against. Names with a
-`zuf_int_` prefix are internal and outside that promise. See
-`vignette("linking")` for the contract in full.
+`zuf_int_` prefix are internal. See `vignette("linking")` for more.
 
 ## From R
 
@@ -126,8 +129,11 @@ fast_info()
 ```
 
 Two deliberate differences from base R: `fast_parse_double()` is correctly
-rounded where `as.numeric()` is not (they differ in the last bit for about
-one decimal in five thousand), and `fast_format_double()` writes the
+rounded where `as.numeric()` is not (how often they differ in the last bit
+depends on the platform and on the number of digits: on Apple Silicon, where
+R has no extended `long double`, they agree on decimals of up to fifteen
+significant digits and differ on about one 17-digit decimal in five), and
+`fast_format_double()` writes the
 shortest digits that round-trip where `as.character()` writes fifteen
 significant digits.
 
@@ -173,6 +179,6 @@ dates, UUIDs, big-endian loads),
 
 ## Licence
 
-MIT for zufast. The vendored libraries keep their own licences (MIT for
-ffc.h, Boost 1.0 for Ryu, BSD 2-Clause for xxHash); see `inst/COPYRIGHTS`
-and `LICENSE.note`.
+MIT for zufast. The vendored code keeps its own licences (MIT for
+ffc.h, Boost 1.0 for Ryu, BSD 2-Clause for xxHash, MIT for Hoehrmann's
+UTF-8 table); see `inst/COPYRIGHTS` and `LICENSE.note`.
