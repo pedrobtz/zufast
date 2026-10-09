@@ -22,8 +22,6 @@ concurrency:
 
 jobs:
   revdep:
-    # pedrobtz/r-actions#66 (revdep branch); repin to the v1 release that
-    # ships it once merged.
-    uses: pedrobtz/r-actions/.github/workflows/revdep.yml@8bfee310274d3a5cd854a1e6a8944ef342638e34
+    uses: pedrobtz/r-actions/.github/workflows/revdep.yml@17264ce002a9359a492e0183852a555a5bb866e7 # v1
     permissions:
       contents: read
