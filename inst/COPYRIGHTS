@@ -19,7 +19,7 @@ include/zufast/vendor/ffc.h -- decimal number parsing and fixed formatting
   ffc.h, a C port of fast_float, https://github.com/kolemannix/ffc.h
   Pinned at tag v26.09.01 (commit 965d4db45d03365b4c852ab34f4d5b08b53bc7b3).
 
-  Copyright (c) 2021 The fast_float authors (Daniel Lemire, Joao Paulo
+  Copyright (c) 2021 The fast_float authors (Daniel Lemire, João Paulo
   Magalhaes and contributors); C port by Koleman Nix.
   Licence: MIT, chosen from the MIT / Apache-2.0 / Boost-1.0 options.
   Licence text: licenses/ffc-LICENSE.

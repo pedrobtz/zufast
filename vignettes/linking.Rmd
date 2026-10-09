@@ -60,21 +60,16 @@ uninstalling zufast and running the fixture's tests again.
    zufast's CI by compiling a unit that calls every public function with R's
    own flags.
 
-## The contract: source compatibility, not ABI
+## Versions
 
-Because nothing crosses a shared-object boundary, there is no ABI to keep.
-Within major version 1:
-
-- a function, type, macro or enumerator that exists in a release exists in
-  every later release with the same meaning;
-- enumerator values are permanent;
-- a consumer built against an older zufast keeps working unchanged, because it
-  carries its own copy of the code;
-- a consumer that rebuilds against a newer zufast compiles without change.
+Because nothing crosses a shared-object boundary, there is no ABI: a consumer
+built against an older zufast keeps working when zufast is updated, because it
+carries its own copy of the code.
 
 Names prefixed `zuf_int_` or `ZUF_INT_` are internal: they are visible in the
-installed headers, but outside the promise. So is anything reached by
-including a vendored header under `zufast/vendor/` directly.
+installed headers, but are not part of the public interface. Neither is
+anything reached by including a vendored header under `zufast/vendor/`
+directly.
 
 `ZUFAST_VERSION_MAJOR`, `ZUFAST_VERSION_MINOR`, `ZUFAST_VERSION_PATCH`,
 `ZUFAST_VERSION_NUMBER` and the string `ZUFAST_VERSION` let a consumer assert
@@ -115,8 +110,11 @@ even, on every platform and in every rounding mode: the algorithm of
 fast_float, which is also GCC's `std::from_chars`. R's `as.numeric()`
 accumulates digits in `long double` and scales by a power of ten; it is not
 correctly rounded, and its result depends on whether R was built with
-`long double`. The two differ in the last bit for roughly one ordinary decimal
-in five thousand:
+`long double`. Where R has an 80-bit `long double`, as on x86-64, the two
+differ in the last bit for roughly one ordinary decimal in five thousand, and
+`"0.799012"` below is one of them. Where it has none, as on Apple Silicon,
+they agree on decimals of up to fifteen significant digits and differ on many
+of 16 or 17:
 
 ```{r}
 x <- "0.799012"
