@@ -1,0 +1,29 @@
+# Reverse-dependency tests: build every package in tools/revdep/consumers.txt
+# against the zufast headers under test and run its testthat suite (see
+# r-actions' revdep.yml). Only when the headers or the list change, weekly,
+# or on demand. tools/run-revdep does the same locally.
+on:
+  pull_request:
+    paths:
+      - inst/include/**
+      - tools/revdep/**
+      - .github/workflows/revdep.yaml
+  schedule:
+    - cron: "37 5 * * 3"
+  workflow_dispatch:
+
+name: revdep
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  revdep:
+    # pedrobtz/r-actions#66 (revdep branch); repin to the v1 release that
+    # ships it once merged.
+    uses: pedrobtz/r-actions/.github/workflows/revdep.yml@8bfee310274d3a5cd854a1e6a8944ef342638e34
+    permissions:
+      contents: read
