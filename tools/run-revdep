@@ -1,0 +1,52 @@
+#!/bin/sh
+# Reverse-dependency tests, locally: build each package in
+# tools/revdep/consumers.txt against this working tree's headers and run its
+# testthat suite, as .github/workflows/revdep.yaml does in CI. zufast and the
+# consumers go into a temporary library ahead of yours, so nothing you have
+# installed changes; the consumers' other dependencies must already be
+# installed. Each consumer is cloned at its listed ref from a sibling checkout
+# (../<name>) when there is one, otherwise from GitHub; uncommitted changes in
+# a sibling are not used. Run from the package root.
+#
+#   tools/run-revdep [name ...]   name: limit to these consumers, e.g. zubin
+#   REVDEP_REMOTE=1               always clone from GitHub
+set -eu
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+LIB="$TMP/lib"
+mkdir -p "$LIB"
+R_LIBS="$LIB${R_LIBS:+:$R_LIBS}"
+export R_LIBS
+
+echo "== zufast (working tree)"
+R CMD INSTALL -l "$LIB" . > "$TMP/zufast.log" 2>&1 || {
+    cat "$TMP/zufast.log"; exit 1; }
+
+grep -v '^[[:space:]]*#' tools/revdep/consumers.txt | while read -r repo ref; do
+    [ -n "$repo" ] || continue
+    name=${repo#*/}
+    if [ $# -gt 0 ]; then
+        case " $* " in *" $name "*) ;; *) continue ;; esac
+    fi
+    src="https://github.com/$repo.git"
+    if [ -z "${REVDEP_REMOTE:-}" ] && [ -d "../$name/.git" ]; then
+        src="file://$(cd "../$name" && pwd)"
+    fi
+    printf '== %s@%s: ' "$name" "$ref"
+    log="$TMP/$name.log"
+    if git clone -q --depth 1 --branch "$ref" "$src" "$TMP/$name" > "$log" 2>&1 &&
+       R CMD INSTALL --preclean -l "$LIB" "$TMP/$name" >> "$log" 2>&1 &&
+       (cd "$TMP/$name/tests" && Rscript testthat.R) >> "$log" 2>&1; then
+        echo ok
+    else
+        echo FAILED
+        tail -n 40 "$log" | sed 's/^/   /'
+        echo "$name" >> "$TMP/failed"
+    fi
+done
+
+if [ -s "$TMP/failed" ]; then
+    echo "failed: $(tr '\n' ' ' < "$TMP/failed")"
+    exit 1
+fi

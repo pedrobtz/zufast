@@ -1,0 +1,11 @@
+# Packages that use zufast through LinkingTo, tested by
+# .github/workflows/revdep.yaml and tools/run-revdep against the zufast
+# headers being changed. One per line: GitHub repository, then the ref to
+# test. Blank lines and lines starting with # are ignored.
+pedrobtz/zubin      main
+pedrobtz/zudedup    main
+pedrobtz/zumsgpack  main
+pedrobtz/zunpy      main
+pedrobtz/zupdf      main
+pedrobtz/zusvg      main
+pedrobtz/zutoml     main
