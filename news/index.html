@@ -42,6 +42,9 @@
 <h2 class="pkg-version" data-toc-text="0.1.1" id="zufast-011">zufast 0.1.1<a class="anchor" aria-label="anchor" href="#zufast-011"></a></h2>
 <ul><li>
 <code>zufast/datetime.h</code>: ISO 8601 week dates. <code>zuf_weekday_from_days()</code>, <code>zuf_iso_week_from_days()</code> (week-numbering year and week), <code>zuf_iso_weeks_in_year()</code> and the inverse <code>zuf_days_from_iso_week()</code>, exact over the whole <code>int32_t</code> day range. Week dates are computed, not parsed.</li>
+<li>
+<code>zufast/datetime.h</code>: <code>zuf_parse_date_opt()</code> and <code>zuf_parse_datetime_opt()</code> take flags. <code>ZUF_DT_EXPANDED_YEAR</code> accepts expanded years, a sign and exactly six digits as in Temporal (<code>+010000-01-01</code>, <code>-271821-04-20</code>), and rejects <code>-000000</code>. <code>zuf_parse_date()</code> and <code>zuf_parse_datetime()</code> keep the four-digit grammar.</li>
+<li>Breaking change for years outside 0000 to 9999: <code>zuf_format_date()</code>, <code>zuf_format_datetime()</code> and <code><a href="../reference/fast_format_datetime.html">fast_format_datetime()</a></code> now pad expanded years to six digits (<code>+010000-01-01</code>, <code>-000001-01-01</code>), where 0.1.0 padded to five. The formatters now write the form that Temporal writes and that <code>ZUF_DT_EXPANDED_YEAR</code> reads. Years 0000 to 9999 are unchanged.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="zufast-010">zufast 0.1.0<a class="anchor" aria-label="anchor" href="#zufast-010"></a></h2>

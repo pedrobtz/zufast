@@ -7,6 +7,19 @@
   `zuf_iso_weeks_in_year()` and the inverse `zuf_days_from_iso_week()`,
   exact over the whole `int32_t` day range. Week dates are computed, not
   parsed.
+- `zufast/datetime.h`: `zuf_parse_date_opt()` and
+  `zuf_parse_datetime_opt()` take flags. `ZUF_DT_EXPANDED_YEAR` accepts
+  expanded years, a sign and exactly six digits as in Temporal
+  (`+010000-01-01`, `-271821-04-20`), and rejects `-000000`.
+  `zuf_parse_date()` and `zuf_parse_datetime()` keep the four-digit
+  grammar.
+- Breaking change for years outside 0000 to 9999: `zuf_format_date()`,
+  `zuf_format_datetime()` and
+  [`fast_format_datetime()`](https://pedrobtz.github.io/zufast/reference/fast_format_datetime.md)
+  now pad expanded years to six digits (`+010000-01-01`,
+  `-000001-01-01`), where 0.1.0 padded to five. The formatters now write
+  the form that Temporal writes and that `ZUF_DT_EXPANDED_YEAR` reads.
+  Years 0000 to 9999 are unchanged.
 
 ## zufast 0.1.0
 
