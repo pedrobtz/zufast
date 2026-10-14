@@ -12,7 +12,11 @@ iso_time <- function(x) {
   sprintf("%sT%02d:%02d:%02d", iso_date(x), lt$hour, lt$min, as.integer(lt$sec))
 }
 
-pdt <- function(s, date_only = FALSE) .Call(zufast_test_parse_datetime, charToRaw(s), date_only)
+pdt <- function(s, date_only = FALSE, flags = 0L) {
+  .Call(zufast_test_parse_datetime, charToRaw(s), date_only, flags)
+}
+
+EXPANDED <- 1L   # ZUF_DT_EXPANDED_YEAR
 
 OK <- 0L; INVALID <- 1L; INCOMPLETE <- 3L
 

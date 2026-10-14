@@ -14,7 +14,13 @@
  * complete: year 0000-9999, month 1-12, day valid for the month in the
  * proleptic Gregorian calendar, hour 0-23, minute 0-59, second 0-60 (RFC
  * 3339's leap second), offset within +-23:59. 24:00:00, comma fractions,
- * week and ordinal dates, expanded years and the basic format are rejected.
+ * week and ordinal dates and the basic format are rejected.
+ *
+ * Expanded years are rejected too, unless the _opt entry points are given
+ * ZUF_DT_EXPANDED_YEAR. Then the date may also be +YYYYYY-MM-DD or
+ * -YYYYYY-MM-DD: a sign and exactly six digits, as in Temporal's DateYear,
+ * with -000000 invalid. The formatters write that form for years outside
+ * 0000-9999, so with the flag every year within +-999999 round-trips.
  *
  * ptr semantics follow std::from_chars: on ZUF_OK, r.ptr is one past the
  * last byte consumed; on ZUF_ERR_INVALID it equals `first`. On
@@ -59,6 +65,7 @@ typedef struct {
 typedef struct { int64_t seconds; uint32_t nanoseconds; } zuf_timestamp;
 
 #define ZUF_DATE_CHARS          10   /* "YYYY-MM-DD", years 0000-9999 */
+#define ZUF_DATE_EXPANDED_CHARS 13   /* "+YYYYYY-MM-DD", ZUF_DT_EXPANDED_YEAR */
 #define ZUF_DATETIME_MAX_CHARS  42   /* any int32_t year: "-2147483648-MM-DDTHH:MM:SS.nnnnnnnnn+HH:MM";
                                          35 for years 0000-9999 */
 #define ZUF_DATE_MAX_CHARS      14   /* any int32_t day count: "+5881580-07-11" */
@@ -255,14 +262,47 @@ ZUF_INLINE void zuf_int_clear_datetime(zuf_datetime *dt)
     memset(dt, 0, sizeof *dt);
 }
 
-/* YYYY-MM-DD only. */
-ZUF_INLINE zuf_result zuf_parse_date(const char *first, const char *last, zuf_datetime *out)
+/* Flags for zuf_parse_date_opt() and zuf_parse_datetime_opt(). */
+#define ZUF_DT_EXPANDED_YEAR  1u   /* also accept a sign and exactly six year digits */
+
+/* +YYYYYY-MM-DD or -YYYYYY-MM-DD at first, which holds a sign. The eight
+   bytes after the top two year digits are "YYYY-MM-", which the four-digit
+   SWAR decodes. */
+ZUF_INLINE zuf_result zuf_int_parse_date_expanded(const char *first, const char *last, zuf_datetime *out)
+{
+    const unsigned char *p = (const unsigned char *)first, *end = (const unsigned char *)last;
+    uint32_t low4, month;
+    int top2, day;
+    int32_t year;
+    if (end - p < ZUF_DATE_EXPANDED_CHARS || !zuf_int_swar_year_month(p + 3, &low4, &month) ||
+        (top2 = zuf_int_two_digits(p + 1)) < 0 || (day = zuf_int_two_digits(p + 11)) < 0)
+        return zuf_int_field_error(p + 1, end, "dddddd-dd-dd", first, last);
+    year = (int32_t)((uint32_t)top2 * 10000u + low4);
+    if (*p == '-') {
+        if (year == 0) return zuf_int_result(first, ZUF_ERR_INVALID);   /* -000000 */
+        year = -year;
+    }
+    if (month < 1 || month > 12 || day < 1 || (uint32_t)day > zuf_days_in_month(year, month))
+        return zuf_int_result(first, ZUF_ERR_INVALID);
+    zuf_int_clear_datetime(out);
+    out->year = year;
+    out->month = (uint8_t)month;
+    out->day = (uint8_t)day;
+    return zuf_int_result(first + ZUF_DATE_EXPANDED_CHARS, ZUF_OK);
+}
+
+/* YYYY-MM-DD only, and with ZUF_DT_EXPANDED_YEAR also +YYYYYY-MM-DD and
+   -YYYYYY-MM-DD. Any other flag bit is reserved and ignored. */
+ZUF_INLINE zuf_result zuf_parse_date_opt(const char *first, const char *last, zuf_datetime *out,
+                                         uint32_t flags)
 {
     const unsigned char *p = (const unsigned char *)first, *end = (const unsigned char *)last;
     uint32_t year, month;
     int day;
     if (end - p < 10 || !zuf_int_swar_year_month(p, &year, &month) || (day = zuf_int_two_digits(p + 8)) < 0) {
         if (p == end) return zuf_int_result(first, ZUF_ERR_INVALID);
+        if ((flags & ZUF_DT_EXPANDED_YEAR) && (*p == '+' || *p == '-'))
+            return zuf_int_parse_date_expanded(first, last, out);
         return zuf_int_field_error(p, end, "dddd-dd-dd", first, last);
     }
     if (month < 1 || month > 12 || day < 1 || (uint32_t)day > zuf_days_in_month((int32_t)year, month))
@@ -274,14 +314,21 @@ ZUF_INLINE zuf_result zuf_parse_date(const char *first, const char *last, zuf_da
     return zuf_int_result(first + 10, ZUF_OK);
 }
 
-/* Every form in the header comment. */
-ZUF_INLINE zuf_result zuf_parse_datetime(const char *first, const char *last, zuf_datetime *out)
+/* YYYY-MM-DD only. */
+ZUF_INLINE zuf_result zuf_parse_date(const char *first, const char *last, zuf_datetime *out)
+{
+    return zuf_parse_date_opt(first, last, out, 0u);
+}
+
+/* Every form in the header comment; flags as for zuf_parse_date_opt(). */
+ZUF_INLINE zuf_result zuf_parse_datetime_opt(const char *first, const char *last, zuf_datetime *out,
+                                             uint32_t flags)
 {
     const unsigned char *p, *end = (const unsigned char *)last;
     zuf_datetime dt;
     int hour, minute, second = 0;
     uint32_t nano = 0;
-    zuf_result r = zuf_parse_date(first, last, &dt);
+    zuf_result r = zuf_parse_date_opt(first, last, &dt, flags);
     if (r.status) return r;
     p = (const unsigned char *)r.ptr;
 
@@ -358,6 +405,12 @@ ZUF_INLINE zuf_result zuf_parse_datetime(const char *first, const char *last, zu
     return zuf_int_result((const char *)p, ZUF_OK);
 }
 
+/* Every form in the header comment, without expanded years. */
+ZUF_INLINE zuf_result zuf_parse_datetime(const char *first, const char *last, zuf_datetime *out)
+{
+    return zuf_parse_datetime_opt(first, last, out, 0u);
+}
+
 /* ---- conversion --------------------------------------------------------- */
 
 /* The date part as days from 1970-01-01. */
@@ -389,7 +442,7 @@ ZUF_INLINE size_t zuf_int_year_len(int32_t year)
     if (year >= 0 && year <= 9999) return 4;
     v = year < 0 ? 0u - (uint32_t)year : (uint32_t)year;
     do { n++; v /= 10u; } while (v);
-    return 1 + (n < 5 ? 5 : n);
+    return 1 + (n < 6 ? 6 : n);
 }
 
 /* Write the n low decimal digits of v to d, two at a time from the end. */
@@ -405,7 +458,7 @@ ZUF_INLINE void zuf_int_write_digits(char *d, uint32_t v, size_t n)
 
 /* Write a year in the len == zuf_int_year_len(year) bytes at d: four
    digits for 0-9999, otherwise ISO 8601 expanded form with a sign and at
-   least five digits. */
+   least six digits, as Temporal writes it and ZUF_DT_EXPANDED_YEAR reads it. */
 ZUF_INLINE void zuf_int_format_year(char *d, int32_t year, size_t len)
 {
     if (len == 4) {

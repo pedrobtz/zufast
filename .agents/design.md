@@ -501,9 +501,15 @@ YYYY-MM-DDtHH:MM:SS...           lower-case t, as YAML permits
 Validation is complete: four-digit year 0000–9999, month 1–12, day valid for the month in the
 proleptic Gregorian calendar (1900-02-29 invalid, 2000-02-29 valid, 2100-02-29 invalid),
 hour 0–23, minute 0–59, second 0–60 (RFC 3339 allows the leap second), offset within
-±23:59. `24:00:00`, a comma as the fraction separator, expanded years, week dates, ordinal
-dates and the basic format without separators are rejected; the first two are rare and the
-rest are deferred (§25). ISO week dates are computed from day counts (§10.2) but not parsed.
+±23:59. `24:00:00`, a comma as the fraction separator, week dates, ordinal dates and the
+basic format without separators are rejected; the first two are rare and the rest are
+deferred (§25).
+
+Expanded years are rejected by default too. With `ZUF_DT_EXPANDED_YEAR` (0.1.1) the date may
+also be `±YYYYYY-MM-DD`: a sign and exactly six digits, Temporal's `DateYear`, with
+`-000000` invalid and `+002024` a valid spelling of 2024. A signed four-, five- or
+seven-digit year is invalid. zutempo needs the form because Temporal's `toString()` writes
+it for years outside 0–9999, over a range of −271821 to 275760. ISO week dates are computed from day counts (§10.2) but not parsed.
 
 ### 10.2 API
 
@@ -520,6 +526,11 @@ typedef struct {
 
 zuf_result zuf_parse_date(const char *first, const char *last, zuf_datetime *out);     /* YYYY-MM-DD only */
 zuf_result zuf_parse_datetime(const char *first, const char *last, zuf_datetime *out); /* every form above */
+
+/* 0.1.1: the same with flags; the two above are these with 0. */
+#define ZUF_DT_EXPANDED_YEAR 1u   /* accept a signed six-digit year */
+zuf_result zuf_parse_date_opt(const char *first, const char *last, zuf_datetime *out, uint32_t flags);
+zuf_result zuf_parse_datetime_opt(const char *first, const char *last, zuf_datetime *out, uint32_t flags);
 
 /* Calendar arithmetic, proleptic Gregorian, days relative to 1970-01-01. */
 int32_t zuf_days_from_civil(int32_t year, uint32_t month, uint32_t day);
@@ -540,6 +551,7 @@ zuf_timestamp zuf_datetime_timestamp(const zuf_datetime *dt);      /* applies of
                                                                       otherwise treats the wall time as UTC */
 
 #define ZUF_DATE_CHARS      10
+#define ZUF_DATE_EXPANDED_CHARS 13  /* "+YYYYYY-MM-DD" */
 #define ZUF_DATETIME_MAX_CHARS 42   /* any int32_t year: "-2147483648-MM-DDTHH:MM:SS.nnnnnnnnn+HH:MM" */
 
 size_t zuf_format_date(char *dst, size_t cap, int32_t days);
@@ -554,7 +566,10 @@ conversion helpers are explicit about what they assume, and `has_offset` is the 
 to honour.
 
 `zuf_format_datetime` writes the fraction with 0, 3, 6 or 9 digits, the shortest group that
-represents `nanosecond` exactly, and `Z` for a zero offset. R's representations fall out
+represents `nanosecond` exactly, and `Z` for a zero offset. Both formatters write a year
+outside 0000–9999 with a sign and at least six digits, as Temporal's `PadISOYear` does, so
+with `ZUF_DT_EXPANDED_YEAR` every year within ±999999 round-trips. 0.1.0 padded to five
+digits; the change is in NEWS for 0.1.1. R's representations fall out
 directly: `Date` is `zuf_datetime_days()`, `POSIXct` is `zuf_datetime_timestamp().seconds`
 plus the nanoseconds as a fraction.
 
@@ -1092,8 +1107,9 @@ Each of these is admitted by the §2 test only when a consumer names it:
 - **varints and zig-zag**: CBOR is fixed-width; no protobuf-shaped consumer exists;
 - **CRC32C**: Parquet and Kafka would want it; neither has a reader in the family;
 - **HTTP dates** (IMF-fixdate): zuhttp's adoption issue invites the request;
-- **ordinal dates, parsing `YYYY-Www-D`, basic format, expanded years, `24:00:00`, comma
-  fractions**; ISO week computation shipped in 0.1.1 for zutempo;
+- **ordinal dates, parsing `YYYY-Www-D`, basic format, `24:00:00`, comma fractions**; ISO
+  week computation and expanded-year parsing shipped in 0.1.1 for zutempo, and the
+  `zuf_parse_*_opt()` flags word has room for the rest;
 - **a JSON number classifier** (integer, unsigned, double), which `ffc_parse_json_number()`
   already provides and would be a thin wrapper;
 - **SIMD paths** for dates, Base64, hex and UTF-8, under the §19.3 rule;

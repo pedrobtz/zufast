@@ -86,6 +86,9 @@ int zuf_probe_all(void)
         uint32_t m = 0, d = 0;
         acc += (int)zuf_parse_date(text, text + ZUF_DATE_CHARS, &dt).status;
         acc += (int)zuf_parse_datetime(text, text + sizeof text - 1, &dt).status;
+        acc += (int)zuf_parse_date_opt(text, text + ZUF_DATE_CHARS, &dt, ZUF_DT_EXPANDED_YEAR).status;
+        acc += (int)zuf_parse_datetime_opt(text, text + sizeof text - 1, &dt, ZUF_DT_EXPANDED_YEAR).status;
+        acc += ZUF_DATE_EXPANDED_CHARS;
         acc += zuf_datetime_days(&dt);
         ts = zuf_datetime_timestamp(&dt);
         acc += (int)(ts.seconds % 7) + (int)ts.nanoseconds;

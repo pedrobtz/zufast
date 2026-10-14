@@ -156,11 +156,14 @@ test_that("zuf_format_datetime() writes RFC 3339 and round-trips", {
   expect_identical(fmt(fields(9999, 12, 31, 23, 59, 60, 999999999, -86340, 1, 1)),
                    "9999-12-31T23:59:60.999999999-23:59")
   expect_identical(nchar(fmt(fields(9999, 12, 31, 23, 59, 60, 999999999, -86340, 1, 1))), 35L)
-  expect_identical(fmt(fields(10000, 1, 1)), "+10000-01-01")
-  expect_identical(fmt(fields(-1, 1, 1)), "-00001-01-01")
+  # expanded years have at least six digits, as Temporal writes them
+  expect_identical(fmt(fields(10000, 1, 1)), "+010000-01-01")
+  expect_identical(fmt(fields(-1, 1, 1)), "-000001-01-01")
   expect_identical(fmt(fields(0, 1, 1)), "0000-01-01")
   expect_identical(fmt(fields(123456, 1, 1)), "+123456-01-01")
-  expect_identical(fmt(fields(-99999, 1, 1)), "-99999-01-01")
+  expect_identical(fmt(fields(-99999, 1, 1)), "-099999-01-01")
+  expect_identical(fmt(fields(275760, 9, 13)), "+275760-09-13")
+  expect_identical(fmt(fields(-271821, 4, 20)), "-271821-04-20")
   expect_identical(fmt(fields(-100000, 1, 1)), "-100000-01-01")
   # ZUF_DATETIME_MAX_CHARS (42) covers any int32_t year
   widest <- fields(-2147483648, 12, 31, 23, 59, 60, 999999999, -86340, 1, 1)
@@ -272,4 +275,48 @@ test_that("ISO weeks are consistent over four centuries and at the int32 ends", 
   # 2020-W53-7 is 2021-01-03; 2026-W01-1 is 2025-12-29
   expect_identical(.Call(zufast_test_days_from_iso_week, c(2020, 2026), c(53, 1), c(7, 1)),
                    as.double(unclass(as.Date(c("2021-01-03", "2025-12-29")))))
+})
+
+test_that("ZUF_DT_EXPANDED_YEAR reads a sign and exactly six year digits", {
+  expect_identical(pdt("+010000-01-01", flags = EXPANDED)[1:3], list(OK, 13L, fields(10000, 1, 1)))
+  expect_identical(pdt("-000001-01-01", flags = EXPANDED)[1:3], list(OK, 13L, fields(-1, 1, 1)))
+  expect_identical(pdt("+002024-02-29", flags = EXPANDED)[1:3], list(OK, 13L, fields(2024, 2, 29)))
+  expect_identical(pdt("+275760-09-13T00:00:00Z", flags = EXPANDED)[1:3],
+                   list(OK, 23L, fields(275760, 9, 13, 0, 0, 0, 0, 0, 1, 1)))
+  expect_identical(pdt("-271821-04-20T00:00", flags = EXPANDED)[[3]][1:3], c(-271821, 4, 20))
+  expect_identical(pdt("-271821-04-20", TRUE, EXPANDED)[1:2], list(OK, 13L))
+  expect_identical(pdt("+000000-01-01", flags = EXPANDED)[[3]][1], 0)
+  # the four-digit form still parses with the flag
+  expect_identical(pdt("2024-02-29", flags = EXPANDED)[1:3], list(OK, 10L, fields(2024, 2, 29)))
+  # -100000-02-29 is a leap day: -100000 is divisible by 400
+  expect_identical(pdt("-100000-02-29", flags = EXPANDED)[[1]], OK)
+  expect_identical(pdt("-099999-02-29", flags = EXPANDED)[[1]], INVALID)
+
+  invalid <- c("-000000-01-01", "+2024-01-01", "+02024-01-01", "+0002024-01-01",
+               "+1000000-01-01", "+00202x-01-01", "+010000-13-01", "+010000-02-30",
+               "+010000/01/01", "++10000-01-01", "+-10000-01-01")
+  for (s in invalid) expect_identical(pdt(s, flags = EXPANDED)[1:2], list(INVALID, 0L), label = s)
+  for (s in c("+", "-", "+01000", "+010000-01", "+010000-01-0")) {
+    expect_identical(pdt(s, flags = EXPANDED)[1:2], list(INCOMPLETE, nchar(s)), label = s)
+  }
+  # without the flag every one of these, and a valid expanded date, is invalid
+  for (s in c(invalid, "+01000", "+010000-01", "+010000-01-01", "-000001-01-01")) {
+    expect_identical(pdt(s)[1:2], list(INVALID, 0L), label = s)
+    expect_identical(pdt(s, TRUE)[1:2], list(INVALID, 0L), label = s)
+  }
+  # the default grammar's rejections stand with the flag on
+  bad <- c("2023-02-29", "2024-13-01", "24-01-01", "2024/01/01", "20240101", "2024-W01-1",
+           "2024-001", "2024-01-01T24:00:00", "2024-01-01T23:60", "2024-01-01T10",
+           "2024-01-01T10:00:00.Z", "2024-01-01T10:00:00+24:00", " 2024-01-01", "")
+  for (s in bad) {
+    r <- pdt(s, flags = EXPANDED)
+    expect_true(r[[1]] %in% c(INVALID, INCOMPLETE), label = s)
+    if (r[[1]] == INVALID) expect_identical(r[[2]], 0L, label = s)
+  }
+})
+
+test_that("expanded years round-trip through the formatters over Temporal's range", {
+  expect_identical(.Call(zufast_test_expanded_roundtrip, -271821, 275760, 200000), 0)
+  # and over the whole six-digit range
+  expect_identical(.Call(zufast_test_expanded_roundtrip, -999999, 999999, 0), 0)
 })
