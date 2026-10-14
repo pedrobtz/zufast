@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">zufast</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -179,7 +179,7 @@
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%.6f"</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1e6</span>, <span class="op">-</span><span class="fl">1000</span>, <span class="fl">1000</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">bench</span><span class="fu">::</span><span class="fu">mark</span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
-<span>  <span class="fu">RcppFastFloat</span><span class="fu">::</span><span class="fu">as.double2</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
+<span>  <span class="fu">RcppFastFloat</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RcppFastFloat/man/as.double2.html" class="external-link">as.double2</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="reference/fast_parse_double.html">fast_parse_double</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
 <span>  check <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  min_iterations <span class="op">=</span> <span class="fl">20</span></span>

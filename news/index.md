@@ -1,5 +1,13 @@
 # Changelog
 
+## zufast 0.1.1
+
+- `zufast/datetime.h`: ISO 8601 week dates. `zuf_weekday_from_days()`,
+  `zuf_iso_week_from_days()` (week-numbering year and week),
+  `zuf_iso_weeks_in_year()` and the inverse `zuf_days_from_iso_week()`,
+  exact over the whole `int32_t` day range. Week dates are computed, not
+  parsed.
+
 ## zufast 0.1.0
 
 - Initial CRAN release: a header-only library of small, fast, portable
