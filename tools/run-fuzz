@@ -4,7 +4,7 @@
 # it for SECONDS (default 30) from its seed corpus. Needs clang with
 # libFuzzer. Run from the package root.
 #
-#   tools/run-fuzz [target ...]     targets: number datetime uuid base64 hex utf8 hash upstream
+#   tools/run-fuzz [target ...]     targets: number datetime uuid base64 hex utf8 hash wide upstream
 #
 # fuzz_upstream.cpp is C++: it checks zufast against fast_float (pinned in
 # tools/fuzz/fast_float). clang compiles the mixed pair as fuzz.yml does.
@@ -12,7 +12,7 @@ set -eu
 
 CC=${CC:-clang}
 SECONDS_PER_TARGET=${SECONDS:-30}
-TARGETS=${*:-number datetime uuid base64 hex utf8 hash upstream}
+TARGETS=${*:-number datetime uuid base64 hex utf8 hash wide upstream}
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 FLAGS="-g -O1 -fno-omit-frame-pointer -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -Iinst/include -Itools/fuzz"

@@ -44,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [number, datetime, uuid, base64, hex, utf8, hash, upstream]
+        target: [number, datetime, uuid, base64, hex, utf8, hash, wide, upstream]
     uses: pedrobtz/r-actions/.github/workflows/fuzz.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
     with:
       # fuzz_upstream is C++ (zufast against fast_float, tools/fuzz/fast_float)

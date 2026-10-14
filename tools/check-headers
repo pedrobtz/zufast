@@ -7,7 +7,9 @@
 #      (the unused-function check of design 4.5);
 #   3. a unit that calls every public function is warning-free, as C and C++;
 #   4. the vendored fallbacks for compilers without __int128 compute what the
-#      native 128-bit paths do (tools/abi/probe-int128.c);
+#      native 128-bit paths do (tools/abi/probe-int128.c), and so do wide.h's,
+#      selected by -U__SIZEOF_INT128__ or by ZUF_NO_INT128
+#      (tools/abi/probe-wide.c);
 #   5. the installed headers mention no R API, and vendor identifiers appear
 #      only under vendor/ and detail/.
 #
@@ -57,19 +59,19 @@ done
 echo "== no-int128 fallback"
 probe=tools/abi/probe-int128.c
 NOI128=-U__SIZEOF_INT128__
-# Count __uint128_t in the lines the zufast headers contribute to a
+# Count __int128 and __uint128_t in the lines the zufast headers contribute to a
 # preprocessed unit (system headers may use it too: Darwin's arm64 thread
 # state does), following the line markers.
 zufast_int128_uses() {
     printf '#include <zufast.h>\n' > "$TMP/pp.c"
     $CC -std=c99 "$@" -I"$INC" -E "$TMP/pp.c" > "$TMP/pp.i"
-    awk '/^# *[0-9]+ "/ { f = $0; next } f ~ /zufast/ && /__uint128_t/ { n++ } END { print n + 0 }' "$TMP/pp.i"
+    awk '/^# *[0-9]+ "/ { f = $0; next } f ~ /zufast/ && /__u?int128/ { n++ } END { print n + 0 }' "$TMP/pp.i"
 }
 if [ "$(zufast_int128_uses)" -eq 0 ]; then
-    echo "FAIL native build uses no __uint128_t: the differential would compare a fallback with itself"; fail=1
+    echo "FAIL native build uses no __int128: the differential would compare a fallback with itself"; fail=1
 fi
 if [ "$(zufast_int128_uses $NOI128)" -ne 0 ]; then
-    echo "FAIL $NOI128 leaves __uint128_t in use"; fail=1
+    echo "FAIL $NOI128 leaves __int128 in use"; fail=1
 fi
 for opt in -O0 -O2; do
     for lang in c cxx; do
@@ -85,6 +87,34 @@ for opt in -O0 -O2; do
             if [ "$a" != "$b" ]; then echo "FAIL no-int128 $lang $opt: $a != $b"; fail=1; fi
         else
             echo "FAIL compile no-int128 $lang $opt"; fail=1
+        fi
+    done
+done
+
+# wide.h: the native build, the build without __SIZEOF_INT128__, and the
+# build with ZUF_NO_INT128 must print the same digest.
+echo "== wide.h fallback"
+probe=tools/abi/probe-wide.c
+for opt in -O0 -O2; do
+    for lang in c cxx; do
+        if [ $lang = c ]; then build=compile_c; link=$CC; else build=compile_cxx; link=$CXX; fi
+        digests=""
+        for variant in native noi128 nowide; do
+            case $variant in
+            native) flags="-DZUF_PROBE_EXPECT_INT128=1" ;;
+            noi128) flags="-DZUF_PROBE_EXPECT_INT128=0 $NOI128" ;;
+            nowide) flags="-DZUF_PROBE_EXPECT_INT128=0 -DZUF_NO_INT128" ;;
+            esac
+            # shellcheck disable=SC2086
+            if $build $probe $opt $flags && $link "$TMP/out.o" -o "$TMP/wide_$variant"; then
+                d=$("$TMP/wide_$variant") || { echo "FAIL wide.h probe $variant $lang $opt"; fail=1; }
+                digests="$digests $d"
+            else
+                echo "FAIL compile wide.h probe $variant $lang $opt"; fail=1
+            fi
+        done
+        if [ "$(echo $digests | tr ' ' '\n' | sort -u | wc -l)" -ne 1 ]; then
+            echo "FAIL wide.h $lang $opt digests differ:$digests"; fail=1
         fi
     done
 done

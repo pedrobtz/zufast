@@ -445,17 +445,6 @@ ZUF_INLINE size_t zuf_int_year_len(int32_t year)
     return 1 + (n < 6 ? 6 : n);
 }
 
-/* Write the n low decimal digits of v to d, two at a time from the end. */
-ZUF_INLINE void zuf_int_write_digits(char *d, uint32_t v, size_t n)
-{
-    while (n >= 2) {
-        n -= 2;
-        zuf_int_write2(d + n, v % 100u);
-        v /= 100u;
-    }
-    if (n) d[0] = (char)('0' + v % 10u);
-}
-
 /* Write a year in the len == zuf_int_year_len(year) bytes at d: four
    digits for 0-9999, otherwise ISO 8601 expanded form with a sign and at
    least six digits, as Temporal writes it and ZUF_DT_EXPANDED_YEAR reads it. */

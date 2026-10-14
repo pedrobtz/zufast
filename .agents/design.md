@@ -57,6 +57,7 @@ The one-line statement that governs every decision below:
 | XXH3 64 and 128, one-shot and streaming | vendored `xxhash.h` | §15 |
 | float16 and bfloat16 conversion; endian load, store and swap | package-owned | §16 |
 | UTF-8 validation and code-point count | package-owned DFA | §17 |
+| 128-bit integers (0.1.1) | package-owned | §9.5 |
 
 **Non-goals**, permanently:
 
@@ -237,10 +238,12 @@ inst/include/
     ├── hash.h               §15
     ├── bits.h               §16 float16, bfloat16, endian
     ├── utf8.h               §17
+    ├── wide.h               §9.5 128-bit integers (0.1.1)
     ├── detail/
     │   ├── portability.h    compiler and platform macros: ZUF_INLINE, ZUF_LIKELY,
-    │   │                    ZUF_ALIGNED, ZUF_STATIC_ASSERT, 128-bit multiply
-    │   ├── digits.h         two-digit table shared by number and datetime formatting
+    │   │                    ZUF_ALIGNED, ZUF_STATIC_ASSERT
+    │   ├── digits.h         two-digit table and zero-padded digit writers shared by
+    │   │                    number, datetime and wide formatting
     │   └── vendor_config.h  the defines that configure ffc.h, xxhash.h and Ryu (§18)
     └── vendor/
         ├── ffc.h
@@ -480,6 +483,71 @@ Every `zuf_format_*` function returns the full length the value needs, writes at
 bytes, and never NUL-terminates. `cap == 0` measures. A caller that passed too small a
 buffer sees a return value greater than `cap` and nothing is corrupted. The `ZUF_*_MAX_CHARS`
 macros are the capacities that always suffice, so the common case needs no check at all.
+
+### 9.5 128-bit integers
+
+`wide.h`, added in 0.1.1. zutempo needs it for Temporal's epoch nanoseconds (74 bits) and
+time durations (84 bits), and turning a timestamp string into epoch nanoseconds is a
+text-to-value hot path. zuint parses and formats 128-bit integers.
+
+```c
+typedef struct { uint64_t low, high; } zuf_u128;
+typedef struct { uint64_t low, high; } zuf_i128;   /* two's complement */
+
+zuf_u128 zuf_u128_make(uint64_t high, uint64_t low);       /* and _low(), _high() */
+zuf_i128 zuf_i128_from_i64(int64_t v);                     /* zuf_u128_from_u64() */
+bool     zuf_i128_to_i64(zuf_i128 v, int64_t *out);        /* zuf_u128_to_u64() */
+zuf_i128 zuf_i128_from_u128(zuf_u128 v);                   /* bit casts, both ways */
+
+int      zuf_i128_cmp(zuf_i128 a, zuf_i128 b);             /* -1, 0, 1; zuf_u128_cmp() */
+bool     zuf_i128_is_neg(zuf_i128 v);
+
+bool     zuf_i128_add(zuf_i128 a, zuf_i128 b, zuf_i128 *out);  /* false on overflow */
+zuf_i128 zuf_i128_add_wrap(zuf_i128 a, zuf_i128 b);            /* modulo 2^128 */
+/* likewise _sub, _mul, and the zuf_u128_ set; zuf_i128_neg() is false for MIN */
+zuf_u128 zuf_u128_mul_u64_u64(uint64_t a, uint64_t b);         /* full product */
+zuf_i128 zuf_i128_mul_i64_i64(int64_t a, int64_t b);
+
+bool zuf_i128_divmod_trunc(zuf_i128 a, zuf_i128 b, zuf_i128 *q, zuf_i128 *r);
+bool zuf_i128_divmod_floor(zuf_i128 a, zuf_i128 b, zuf_i128 *q, zuf_i128 *r);
+bool zuf_i128_divmod_trunc_i64(zuf_i128 a, int64_t b, zuf_i128 *q, int64_t *r);
+bool zuf_i128_divmod_floor_i64(zuf_i128 a, int64_t b, zuf_i128 *q, int64_t *r);
+bool zuf_u128_divmod(zuf_u128 a, zuf_u128 b, zuf_u128 *q, zuf_u128 *r);
+bool zuf_u128_divmod_u64(zuf_u128 a, uint64_t b, zuf_u128 *q, uint64_t *r);
+
+bool zuf_i128_to_f64(zuf_i128 v, double *out);     /* exact or false; zuf_u128_ likewise */
+bool zuf_i128_from_f64(double v, zuf_i128 *out);
+
+zuf_result zuf_parse_i128(const char *first, const char *last, zuf_i128 *out);
+char      *zuf_write_i128(char *dst, zuf_i128 v);  /* and the zuf_u128 pair */
+#define ZUF_U128_MAX_CHARS 39
+#define ZUF_I128_MAX_CHARS 40
+```
+
+**One public type in every build.** The two types are structs even where the compiler has
+`__int128`. A public `__int128` on one build and a struct on another would give consumers
+two type systems: code using `a + b` or `(double)a` would compile natively and fail without
+it. The native type is private to the function bodies, behind `__extension__` typedefs so
+that `-Wpedantic` is quiet. Passing a two-word struct and passing `__int128` both use a
+register pair on x86-64 and AArch64, so the conversions cost nothing. Defining
+`ZUF_NO_INT128` before the include selects the portable code. It affects `wide.h` only;
+the vendored libraries key on `__SIZEOF_INT128__` alone.
+
+**Semantics.** Checked operations return false on overflow and leave `*out` unchanged.
+Division returns false for a zero divisor and for `MIN / -1`. `_trunc` rounds toward zero
+and `_floor` toward negative infinity, and their remainders take the sign of the dividend
+and the divisor respectively. The 64-bit-divisor forms are the ones zutempo needs: every
+divisor it has is an increment times a unit. Conversion to and from `double` is exact or
+fails, and works on the bits, since `<math.h>` is outside §5's include set and the result
+must not depend on the FPU rounding mode. `-2^127` converts both ways. The decimal grammar
+is §8.2's integer grammar, with `zuf_parse_i64()`'s results and `ptr` rules.
+
+**Implementation.** Add and subtract work on the two words in every build. Multiply and
+divide use the native type where it exists. The fallback multiplies through four 32 x 32
+bit partial products, and divides by binary long division, one quotient bit per step, for
+the 64- and the 128-bit divisor alike. Nothing in the fallback needs to be fast: no CRAN
+platform runs it, and the differential test of §21.1 keeps it honest. Parsing takes 19
+digits at a time into a `uint64_t`. Writing divides by 10^19 twice.
 
 ## 10. Dates and timestamps
 
@@ -850,7 +918,7 @@ Compilers: GCC, clang, Apple clang. MSVC is not a target, because no R toolchain
 the headers compile as C++11 so that cpp11 and Rcpp consumers can include them.
 
 Project code is C99 with `<stdbool.h>`: no C11 atomics, no intrinsics, no assembly, no
-threads. The 128-bit multiply in `detail/portability.h` uses `__uint128_t` where the compiler
+threads. The 128-bit arithmetic in `wide.h` (§9.5) uses `__int128` where the compiler
 offers it and a portable 64-bit emulation otherwise, as ffc.h does internally. Byte order is
 handled by construction in §16 and by the vendored libraries; no CI leg runs big-endian, and
 the design says so rather than claiming coverage.
@@ -925,7 +993,12 @@ the benchmarks, and a gate counts only once it has been seen to fail (zuxml's ru
   of §4.5;
 - a probe that calls every public function compiles warning-free the same way;
 - a comment-stripped grep of the installed headers finds no `SEXP`, `Rf_`, `R.h`, and no
-  `ffc_`, `XXH`, `ryu` identifier outside `vendor/` and `detail/vendor_config.h`.
+  `ffc_`, `XXH`, `ryu` identifier outside `vendor/` and `detail/vendor_config.h`;
+- `wide.h` built natively, with `__SIZEOF_INT128__` undefined and with `ZUF_NO_INT128`
+  prints one digest over every operation on random operands (`tools/abi/probe-wide.c`).
+  The R suite does the same on every platform it runs on: `zufast_test_wide.c` and
+  `zufast_test_wide_fallback.c` compile one harness natively and with `ZUF_NO_INT128`, and
+  `test-wide.R` requires identical results from both before checking any value.
 
 ### 21.2 The shared object
 
@@ -986,7 +1059,7 @@ classes never on message text, and finish in under a minute.
 
 `hardening.yaml` compiles the headers into libFuzzer targets with ASan and UBSan, no R in
 the picture: `fuzz_number`, `fuzz_datetime`, `fuzz_uuid`, `fuzz_base64`, `fuzz_hex`,
-`fuzz_utf8`, `fuzz_hash`, each with a seed corpus and a canary that must crash.
+`fuzz_utf8`, `fuzz_hash`, `fuzz_wide`, each with a seed corpus and a canary that must crash.
 `fuzz_number` also checks the parsers against the C library: doubles against glibc's
 correctly rounded `strtod`, integers in every base against `strtoll`/`strtoull`.
 `fuzz_hash` checks the streaming hasher, fed in input-chosen chunks, against the one-shot
@@ -1107,6 +1180,8 @@ Each of these is admitted by the §2 test only when a consumer names it:
 - **varints and zig-zag**: CBOR is fixed-width; no protobuf-shaped consumer exists;
 - **CRC32C**: Parquet and Kafka would want it; neither has a reader in the family;
 - **HTTP dates** (IMF-fixdate): zuhttp's adoption issue invites the request;
+- **`_opt` forms of the 128-bit parsers** with flags and a base, as `zuf_num_options` gives
+  the 64-bit ones; 0.1.1 has decimal only;
 - **ordinal dates, parsing `YYYY-Www-D`, basic format, `24:00:00`, comma fractions**; ISO
   week computation and expanded-year parsing shipped in 0.1.1 for zutempo, and the
   `zuf_parse_*_opt()` flags word has room for the rest;

@@ -153,5 +153,38 @@ int zuf_probe_all(void)
         acc += ZUF_HASHER_SIZE;
     }
 
+    /* wide.h */
+    {
+        static const char text[] = "-170141183460469231731687303715884105728";
+        char out[ZUF_I128_MAX_CHARS + ZUF_U128_MAX_CHARS];
+        zuf_u128 u = zuf_u128_make(1, 2), uq, ur;
+        zuf_i128 v = zuf_i128_from_i64(-3), iq, ir;
+        int64_t i64 = 0, r64 = 0;
+        uint64_t u64 = 0;
+        double d = 0;
+        bool ok = true;
+        acc += (int)(zuf_u128_low(u) + zuf_u128_high(u));
+        u = zuf_u128_from_u64(7);
+        v = zuf_i128_from_u128(zuf_u128_from_i128(v));
+        ok &= zuf_i128_to_i64(v, &i64) && zuf_u128_to_u64(u, &u64);
+        acc += zuf_i128_cmp(v, v) + zuf_u128_cmp(u, u) + zuf_i128_is_neg(v);
+        ok &= zuf_u128_add(u, u, &uq) && zuf_u128_sub(u, u, &uq) && zuf_u128_mul(u, u, &uq);
+        ok &= zuf_i128_add(v, v, &iq) && zuf_i128_sub(v, v, &iq) && zuf_i128_mul(v, v, &iq);
+        ok &= zuf_i128_neg(v, &iq);
+        uq = zuf_u128_add_wrap(zuf_u128_sub_wrap(u, u), zuf_u128_mul_wrap(u, u));
+        iq = zuf_i128_add_wrap(zuf_i128_sub_wrap(v, v), zuf_i128_mul_wrap(v, v));
+        uq = zuf_u128_mul_u64_u64(3, 4);
+        iq = zuf_i128_mul_i64_i64(-3, 4);
+        ok &= zuf_u128_divmod(u, u, &uq, &ur) && zuf_u128_divmod_u64(u, 2, &uq, &u64);
+        ok &= zuf_i128_divmod_trunc(v, v, &iq, &ir) && zuf_i128_divmod_floor(v, v, &iq, &ir);
+        ok &= zuf_i128_divmod_trunc_i64(v, 2, &iq, &r64) && zuf_i128_divmod_floor_i64(v, 2, &iq, &r64);
+        ok &= zuf_i128_to_f64(v, &d) && zuf_u128_to_f64(u, &d);
+        ok &= zuf_i128_from_f64(d, &iq) && zuf_u128_from_f64(2.0, &uq);
+        acc += (int)zuf_parse_i128(text, text + sizeof text - 1, &v).status;
+        acc += (int)zuf_parse_u128(text + 1, text + sizeof text - 1, &u).status;
+        acc += (int)(zuf_write_u128(zuf_write_i128(out, v), u) - out);
+        acc += ok + (int)i64 + (int)r64 + (int)(u64 & 1) + (int)(iq.low & 1) + (int)(uq.low & 1) + (int)(ir.low & 1) + (int)(ur.low & 1);
+    }
+
     return acc;
 }
