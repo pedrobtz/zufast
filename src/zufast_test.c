@@ -525,6 +525,71 @@ SEXP zufast_test_calendar_walk(SEXP lo, SEXP hi, SEXP step)
     return Rf_ScalarReal(bad);
 }
 
+/* For each day: a 3-column matrix of week year, week and ISO weekday. */
+SEXP zufast_test_iso_week(SEXP days)
+{
+    R_xlen_t i, n = XLENGTH(days);
+    SEXP out = PROTECT(Rf_allocMatrix(REALSXP, (int)n, 3));
+    double *o = REAL(out);
+    for (i = 0; i < n; i++) {
+        int32_t d = (int32_t)REAL(days)[i], wy;
+        uint32_t w;
+        zuf_iso_week_from_days(d, &wy, &w);
+        o[i] = wy; o[i + n] = w; o[i + 2 * n] = zuf_weekday_from_days(d);
+    }
+    UNPROTECT(1);
+    return out;
+}
+
+SEXP zufast_test_days_from_iso_week(SEXP y, SEXP w, SEXP d)
+{
+    R_xlen_t i, n = XLENGTH(y);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
+    for (i = 0; i < n; i++)
+        REAL(out)[i] = zuf_days_from_iso_week((int32_t)REAL(y)[i], (uint32_t)REAL(w)[i],
+                                              (uint32_t)REAL(d)[i]);
+    UNPROTECT(1);
+    return out;
+}
+
+SEXP zufast_test_iso_weeks_in_year(SEXP y)
+{
+    R_xlen_t i, n = XLENGTH(y);
+    SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
+    for (i = 0; i < n; i++) REAL(out)[i] = zuf_iso_weeks_in_year((int32_t)REAL(y)[i]);
+    UNPROTECT(1);
+    return out;
+}
+
+/* Walk [lo, hi] day by day. Each day must round-trip through its week date;
+   the weekday must follow the previous day's; the week must change exactly
+   when the weekday wraps to Monday, to week 1 of the next week year after the
+   last week of the previous one. Returns the number of failures. */
+SEXP zufast_test_iso_week_walk(SEXP lo, SEXP hi)
+{
+    int64_t d, a = (int64_t)Rf_asReal(lo), b = (int64_t)Rf_asReal(hi);
+    double bad = 0;
+    int32_t py = 0;
+    uint32_t pw = 0, pwd = 0;
+    int have_prev = 0;
+    for (d = a; d <= b; d++) {
+        int32_t wy;
+        uint32_t w, wd = zuf_weekday_from_days((int32_t)d);
+        zuf_iso_week_from_days((int32_t)d, &wy, &w);
+        if (wd < 1 || wd > 7 || w < 1 || w > zuf_iso_weeks_in_year(wy)) bad++;
+        else if (zuf_days_from_iso_week(wy, w, wd) != (int32_t)d) bad++;
+        if (have_prev) {
+            int next_ok;
+            if (pwd < 7) next_ok = wd == pwd + 1 && wy == py && w == pw;
+            else if (pw < zuf_iso_weeks_in_year(py)) next_ok = wd == 1 && wy == py && w == pw + 1;
+            else next_ok = wd == 1 && wy == py + 1 && w == 1;
+            if (!next_ok) bad++;
+        }
+        py = wy; pw = w; pwd = wd; have_prev = 1;
+    }
+    return Rf_ScalarReal(bad);
+}
+
 /* ---- number.h ----------------------------------------------------------- */
 
 #include <stdlib.h>

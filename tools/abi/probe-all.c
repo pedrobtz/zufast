@@ -93,6 +93,9 @@ int zuf_probe_all(void)
         zuf_civil_from_days(0, &y, &m, &d);
         acc += y + (int)m + (int)d;
         acc += zuf_is_leap_year(2024) + (int)zuf_days_in_month(2024, 2);
+        zuf_iso_week_from_days(0, &y, &m);
+        acc += y + (int)m + (int)zuf_weekday_from_days(0);
+        acc += (int)zuf_iso_weeks_in_year(2026) + zuf_days_from_iso_week(2026, 1, 1);
         acc += (int)zuf_format_date(date, sizeof date, 0);
         acc += (int)zuf_format_datetime(out, sizeof out, &dt);
     }
