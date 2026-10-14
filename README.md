@@ -12,7 +12,8 @@ other R packages to use through `LinkingTo: zufast`:
 | Header | What it provides |
 |---|---|
 | `zufast/number.h` | correctly rounded parsing of `double`, `float` and 32/64-bit integers (any base 2–36, JSON mode); shortest round-trip and exact fixed formatting; integer writers |
-| `zufast/datetime.h` | ISO 8601 / RFC 3339 dates and timestamps to fields and back; calendar arithmetic |
+| `zufast/datetime.h` | ISO 8601 / RFC 3339 dates and timestamps to fields and back; calendar arithmetic; ISO week dates |
+| `zufast/wide.h` | 128-bit signed and unsigned integers: checked and wrapping arithmetic, division, exact `double` conversion, decimal text |
 | `zufast/literal.h` | booleans with per-spelling flags; literal matching; ASCII whitespace |
 | `zufast/uuid.h` | UUID parsing and formatting |
 | `zufast/hex.h`, `zufast/base64.h` | hex and strict Base64 (standard and URL alphabets) |

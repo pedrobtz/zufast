@@ -14,6 +14,15 @@
   to six digits (`+010000-01-01`, `-000001-01-01`), where 0.1.0 padded to
   five. The formatters now write the form that Temporal writes and that
   `ZUF_DT_EXPANDED_YEAR` reads. Years 0000 to 9999 are unchanged.
+* New `zufast/wide.h`: 128-bit integers `zuf_i128` and `zuf_u128`, for
+  Temporal's epoch nanoseconds and durations in zutempo and for zuint. Both
+  are two-word structs in every build. The header offers checked and
+  wrapping add, subtract and multiply, the full 64 x 64 bit products,
+  truncating and floor division by a 64- or 128-bit divisor, exact
+  conversion to and from `double`, and decimal parsing and writing. The
+  native `__int128` is used inside the functions where the compiler has it.
+  Defining `ZUF_NO_INT128` selects the portable code, and the test suite
+  checks that both give identical results.
 
 # zufast 0.1.0
 

@@ -1,6 +1,6 @@
 /*
- * zufast/detail/digits.h -- the two-digit table shared by number and date
- * formatting. Internal.
+ * zufast/detail/digits.h -- the two-digit table and zero-padded digit
+ * writers shared by number, date and 128-bit formatting. Internal.
  *
  * The table is returned by a function so that a unit which includes the
  * header without formatting anything gets no unused-variable warning.
@@ -31,6 +31,29 @@ ZUF_INLINE const char *zuf_int_digits2(void)
 ZUF_INLINE void zuf_int_write2(char *dst, uint32_t v)
 {
     memcpy(dst, zuf_int_digits2() + 2 * v, 2);
+}
+
+/* Write the n low decimal digits of v to d, zero-padded, two at a time from
+   the end. */
+ZUF_INLINE void zuf_int_write_digits(char *d, uint32_t v, size_t n)
+{
+    while (n >= 2) {
+        n -= 2;
+        zuf_int_write2(d + n, v % 100u);
+        v /= 100u;
+    }
+    if (n) d[0] = (char)('0' + v % 10u);
+}
+
+/* As zuf_int_write_digits() for a 64-bit value. */
+ZUF_INLINE void zuf_int_write_digits64(char *d, uint64_t v, size_t n)
+{
+    while (n >= 2) {
+        n -= 2;
+        zuf_int_write2(d + n, (uint32_t)(v % 100u));
+        v /= 100u;
+    }
+    if (n) d[0] = (char)('0' + v % 10u);
 }
 
 #endif /* ZUFAST_DETAIL_DIGITS_H */

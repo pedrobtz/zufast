@@ -63,6 +63,18 @@ static const R_CallMethodDef call_methods[] = {
     CALLDEF(zufast_test_to_f32, 1),
     CALLDEF(zufast_test_xxh3_vectors, 3),
     CALLDEF(zufast_test_xxh3_streaming, 1),
+    CALLDEF(zufast_test_wide_op, 3),
+    CALLDEF(zufast_test_wide_parse, 2),
+    CALLDEF(zufast_test_wide_to_f64, 2),
+    CALLDEF(zufast_test_wide_from_f64, 2),
+    CALLDEF(zufast_test_wide_random, 1),
+    CALLDEF(zufast_test_wide_native, 0),
+    CALLDEF(zufast_test_wide_fallback_op, 3),
+    CALLDEF(zufast_test_wide_fallback_parse, 2),
+    CALLDEF(zufast_test_wide_fallback_to_f64, 2),
+    CALLDEF(zufast_test_wide_fallback_from_f64, 2),
+    CALLDEF(zufast_test_wide_fallback_random, 1),
+    CALLDEF(zufast_test_wide_fallback_native, 0),
     {NULL, NULL, 0}
 };
 

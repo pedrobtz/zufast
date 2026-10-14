@@ -71,4 +71,18 @@ SEXP zufast_test_to_f32(SEXP x);
 SEXP zufast_test_xxh3_vectors(SEXP len, SEXP seed, SEXP kind);
 SEXP zufast_test_xxh3_streaming(SEXP maxlen);
 
+/* zufast_test_wide.c and zufast_test_wide_fallback.c */
+SEXP zufast_test_wide_op(SEXP name, SEXP a, SEXP b);
+SEXP zufast_test_wide_parse(SEXP kind, SEXP x);
+SEXP zufast_test_wide_to_f64(SEXP kind, SEXP a);
+SEXP zufast_test_wide_from_f64(SEXP kind, SEXP x);
+SEXP zufast_test_wide_random(SEXP n);
+SEXP zufast_test_wide_native(void);
+SEXP zufast_test_wide_fallback_op(SEXP name, SEXP a, SEXP b);
+SEXP zufast_test_wide_fallback_parse(SEXP kind, SEXP x);
+SEXP zufast_test_wide_fallback_to_f64(SEXP kind, SEXP a);
+SEXP zufast_test_wide_fallback_from_f64(SEXP kind, SEXP x);
+SEXP zufast_test_wide_fallback_random(SEXP n);
+SEXP zufast_test_wide_fallback_native(void);
+
 #endif

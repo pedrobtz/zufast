@@ -23,5 +23,6 @@
 #include "zufast/datetime.h"
 #include "zufast/number.h"
 #include "zufast/hash.h"
+#include "zufast/wide.h"
 
 #endif /* ZUFAST_H */
