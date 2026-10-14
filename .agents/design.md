@@ -69,7 +69,8 @@ The one-line statement that governs every decision below:
 - a registered function table or a static archive (§4).
 
 **Deferred**, not in v0.1.0 and only added when a consumer asks (§25): varints and zig-zag,
-CRC32C, SIMD dispatch, HTTP dates, ISO week and ordinal dates, a JSON number classifier.
+CRC32C, SIMD dispatch, HTTP dates, ordinal dates and week-date parsing, a JSON number
+classifier.
 
 The admission test for anything new:
 
@@ -502,7 +503,7 @@ proleptic Gregorian calendar (1900-02-29 invalid, 2000-02-29 valid, 2100-02-29 i
 hour 0–23, minute 0–59, second 0–60 (RFC 3339 allows the leap second), offset within
 ±23:59. `24:00:00`, a comma as the fraction separator, expanded years, week dates, ordinal
 dates and the basic format without separators are rejected; the first two are rare and the
-rest are deferred (§25).
+rest are deferred (§25). ISO week dates are computed from day counts (§10.2) but not parsed.
 
 ### 10.2 API
 
@@ -525,6 +526,12 @@ int32_t zuf_days_from_civil(int32_t year, uint32_t month, uint32_t day);
 void    zuf_civil_from_days(int32_t days, int32_t *year, uint32_t *month, uint32_t *day);
 bool    zuf_is_leap_year(int32_t year);
 uint32_t zuf_days_in_month(int32_t year, uint32_t month);
+
+/* ISO 8601 weeks (0.1.1), exact for every int32_t day count. */
+uint32_t zuf_weekday_from_days(int32_t days);                       /* 1 = Monday .. 7 = Sunday */
+void     zuf_iso_week_from_days(int32_t days, int32_t *week_year, uint32_t *week);
+uint32_t zuf_iso_weeks_in_year(int32_t week_year);                  /* 52 or 53 */
+int32_t  zuf_days_from_iso_week(int32_t week_year, uint32_t week, uint32_t weekday);
 
 typedef struct { int64_t seconds; uint32_t nanoseconds; } zuf_timestamp;
 
@@ -550,6 +557,12 @@ to honour.
 represents `nanosecond` exactly, and `Z` for a zero offset. R's representations fall out
 directly: `Date` is `zuf_datetime_days()`, `POSIXct` is `zuf_datetime_timestamp().seconds`
 plus the nanoseconds as a fraction.
+
+The week functions serve Temporal's `dayOfWeek`, `weekOfYear` and `yearOfWeek` in zutempo.
+They work on the same shifted, never-negative day count as the civil functions, so no
+signed modulo is needed and the Thursday of the first and last weeks of the `int32_t`
+range stays in reach: a week belongs to the week-numbering year that holds its Thursday,
+and 4 January is always in week 1.
 
 ### 10.3 Implementation
 
@@ -1079,7 +1092,8 @@ Each of these is admitted by the §2 test only when a consumer names it:
 - **varints and zig-zag**: CBOR is fixed-width; no protobuf-shaped consumer exists;
 - **CRC32C**: Parquet and Kafka would want it; neither has a reader in the family;
 - **HTTP dates** (IMF-fixdate): zuhttp's adoption issue invites the request;
-- **ISO week and ordinal dates, basic format, expanded years, `24:00:00`, comma fractions**;
+- **ordinal dates, parsing `YYYY-Www-D`, basic format, expanded years, `24:00:00`, comma
+  fractions**; ISO week computation shipped in 0.1.1 for zutempo;
 - **a JSON number classifier** (integer, unsigned, double), which `ffc_parse_json_number()`
   already provides and would be a thin wrapper;
 - **SIMD paths** for dates, Base64, hex and UTF-8, under the §19.3 rule;

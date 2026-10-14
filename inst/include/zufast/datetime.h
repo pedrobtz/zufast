@@ -30,7 +30,9 @@
  * Calendar arithmetic uses the Euclidean affine functions of Neri and
  * Schneider (2022), "Euclidean affine functions and their application to
  * calendar algorithms", with days counted from 1970-01-01. They are exact
- * for every int32_t day count.
+ * for every int32_t day count, and so are the ISO 8601 day of week, week of
+ * year and week-numbering year computed from them. Week dates are computed,
+ * not parsed: "2024-W01-1" is rejected by the parsers.
  *
  * Nothing here uses time.h, the locale, errno, allocation or global state;
  * every function may be called from any thread.
@@ -85,7 +87,7 @@ ZUF_INLINE uint32_t zuf_days_in_month(int32_t year, uint32_t month)
 /* Days from 1970-01-01 to year-month-day, proleptic Gregorian. month and day
    must be valid for the year, and the result must fit int32_t (years
    -5877641 to 5881580). */
-ZUF_INLINE int32_t zuf_days_from_civil(int32_t year, uint32_t month, uint32_t day)
+ZUF_INLINE uint64_t zuf_int_n_from_civil(int32_t year, uint32_t month, uint32_t day)
 {
     uint64_t j = month <= 2;
     uint64_t y = (uint64_t)((int64_t)year + (int64_t)ZUF_INT_CAL_L) - j;
@@ -93,14 +95,24 @@ ZUF_INLINE int32_t zuf_days_from_civil(int32_t year, uint32_t month, uint32_t da
     uint64_t c = y / 100;
     uint64_t y_star = 1461 * y / 4 - c + c / 4;
     uint64_t m_star = (979 * m - 2919) / 32;
-    uint64_t n = y_star + m_star + (day - 1u);
-    return (int32_t)((int64_t)n - (int64_t)ZUF_INT_CAL_K);
+    return y_star + m_star + (day - 1u);
 }
 
-/* The civil date of a day count from 1970-01-01; exact for every int32_t. */
-ZUF_INLINE void zuf_civil_from_days(int32_t days, int32_t *year, uint32_t *month, uint32_t *day)
+ZUF_INLINE int32_t zuf_days_from_civil(int32_t year, uint32_t month, uint32_t day)
 {
-    uint64_t n = (uint64_t)((int64_t)days + (int64_t)ZUF_INT_CAL_K);
+    return (int32_t)((int64_t)zuf_int_n_from_civil(year, month, day) - (int64_t)ZUF_INT_CAL_K);
+}
+
+/* The shifted day count n = days + ZUF_INT_CAL_K of an int32_t day count:
+   never negative, and with room on either side for a few days more. */
+ZUF_INLINE uint64_t zuf_int_cal_n(int32_t days)
+{
+    return (uint64_t)((int64_t)days + (int64_t)ZUF_INT_CAL_K);
+}
+
+/* The civil date of a shifted day count n (zuf_int_cal_n). */
+ZUF_INLINE void zuf_int_civil_from_n(uint64_t n, int32_t *year, uint32_t *month, uint32_t *day)
+{
     /* century */
     uint64_t n1 = 4 * n + 3;
     uint64_t c = n1 / 146097;
@@ -119,6 +131,64 @@ ZUF_INLINE void zuf_civil_from_days(int32_t days, int32_t *year, uint32_t *month
     *year = (int32_t)((int64_t)y - (int64_t)ZUF_INT_CAL_L + j);
     *month = j ? m - 12 : m;
     *day = d + 1;
+}
+
+/* The civil date of a day count from 1970-01-01; exact for every int32_t. */
+ZUF_INLINE void zuf_civil_from_days(int32_t days, int32_t *year, uint32_t *month, uint32_t *day)
+{
+    zuf_int_civil_from_n(zuf_int_cal_n(days), year, month, day);
+}
+
+/* ---- ISO 8601 weeks ----------------------------------------------------- */
+
+/* Day of week of a shifted day count, 0 = Monday .. 6 = Sunday. ZUF_INT_CAL_K
+   is 1 modulo 7 (146097 = 7 * 20871, 719468 = 7 * 102781 + 1), and day 0,
+   1970-01-01, is a Thursday (3). */
+ZUF_INLINE uint32_t zuf_int_weekday0(uint64_t n)
+{
+    return (uint32_t)((n + 2) % 7);
+}
+
+/* ISO 8601 day of week, 1 = Monday .. 7 = Sunday; exact for every int32_t
+   day count. */
+ZUF_INLINE uint32_t zuf_weekday_from_days(int32_t days)
+{
+    return zuf_int_weekday0(zuf_int_cal_n(days)) + 1u;
+}
+
+/* 52 or 53: the number of weeks in ISO week-numbering year `week_year`. A
+   year has 53 when 1 January is a Thursday, or a Wednesday in a leap year.
+   week_year must lie in -5877641 to 5881580, the years of the int32_t day
+   range. */
+ZUF_INLINE uint32_t zuf_iso_weeks_in_year(int32_t week_year)
+{
+    uint32_t wd0 = zuf_int_weekday0(zuf_int_n_from_civil(week_year, 1, 1));
+    return (wd0 == 3 || (wd0 == 2 && zuf_is_leap_year(week_year))) ? 53u : 52u;
+}
+
+/* The ISO 8601 week-numbering year and week (1 to 52 or 53) of a day count
+   from 1970-01-01; exact for every int32_t. A week belongs to the year that
+   holds its Thursday. */
+ZUF_INLINE void zuf_iso_week_from_days(int32_t days, int32_t *week_year, uint32_t *week)
+{
+    uint64_t n = zuf_int_cal_n(days);
+    uint64_t thursday = n + 3 - zuf_int_weekday0(n);
+    int32_t y;
+    uint32_t m, d;
+    zuf_int_civil_from_n(thursday, &y, &m, &d);
+    *week_year = y;
+    *week = (uint32_t)((thursday - zuf_int_n_from_civil(y, 1, 1)) / 7) + 1u;
+}
+
+/* The day count from 1970-01-01 of (week-numbering year, week, weekday),
+   with week 1 to zuf_iso_weeks_in_year(week_year) and weekday 1 (Monday) to
+   7 (Sunday). As for zuf_days_from_civil(), the inputs must be valid and
+   the result must fit int32_t. */
+ZUF_INLINE int32_t zuf_days_from_iso_week(int32_t week_year, uint32_t week, uint32_t weekday)
+{
+    uint64_t jan4 = zuf_int_n_from_civil(week_year, 1, 4);   /* always in week 1 */
+    uint64_t n = jan4 - zuf_int_weekday0(jan4) + 7u * (uint64_t)(week - 1u) + (weekday - 1u);
+    return (int32_t)((int64_t)n - (int64_t)ZUF_INT_CAL_K);
 }
 
 /* ---- parsing ------------------------------------------------------------ */

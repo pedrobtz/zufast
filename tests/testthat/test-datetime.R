@@ -234,3 +234,42 @@ test_that("fast_format_datetime() writes UTC RFC 3339", {
   expect_error(fast_format_datetime(Sys.time(), digits = 10), class = "zufast_invalid_argument")
   expect_error(fast_format_datetime(Sys.time(), digits = 1.5), class = "zufast_invalid_argument")
 })
+
+test_that("ISO week dates agree with strftime() on every day from 1900 to 2100", {
+  skip_if(format(as.Date("2021-01-03"), "%G-W%V-%u") != "2020-W53-7",
+          "this platform's strftime() lacks %G, %V or %u")
+  d <- seq(as.Date("1900-01-01"), as.Date("2100-12-31"), by = "day")
+  days <- as.double(unclass(d))
+  wk <- .Call(zufast_test_iso_week, days)
+  expect_identical(sprintf("%04d-W%02d-%d", wk[, 1], wk[, 2], wk[, 3]),
+                   format(d, "%G-W%V-%u"))
+  expect_identical(.Call(zufast_test_days_from_iso_week, wk[, 1], wk[, 2], wk[, 3]), days)
+
+  # weeks per week year, from the reference; 1900 and 2100 are whole week
+  # years inside the span only by luck, so the comparison leaves them out
+  ref <- tapply(as.integer(format(d, "%V")), format(d, "%G"), max)
+  years <- 1901:2099
+  expect_identical(.Call(zufast_test_iso_weeks_in_year, as.double(years)),
+                   as.double(ref[as.character(years)]), ignore_attr = TRUE)
+})
+
+test_that("ISO weeks are consistent over four centuries and at the int32 ends", {
+  walk <- function(lo, hi) .Call(zufast_test_iso_week_walk, lo, hi)
+  expect_identical(walk(-146097, 146097), 0)
+  expect_identical(walk(-2^31, -2^31 + 6), 0)
+  expect_identical(walk(2^31 - 7, 2^31 - 1), 0)
+  wk <- .Call(zufast_test_iso_week, c(0, 1, -1, -2^31, 2^31 - 1))
+  expect_identical(wk[1, ], c(1970, 1, 4))   # 1970-01-01, a Thursday
+  expect_identical(wk[2, 3], 5)
+  expect_identical(wk[3, 3], 3)
+  expect_identical(wk[4, 1], -5877641)
+  expect_identical(wk[5, 1], 5881580)
+
+  in_year <- function(y) .Call(zufast_test_iso_weeks_in_year, as.double(y))
+  expect_identical(in_year(c(2004, 2009, 2015, 2020, 2026)), rep(53, 5))
+  expect_identical(in_year(c(2021, 2024, 2025)), rep(52, 3))
+  expect_true(all(in_year(c(-5877641, 0, 5881580)) %in% c(52, 53)))
+  # 2020-W53-7 is 2021-01-03; 2026-W01-1 is 2025-12-29
+  expect_identical(.Call(zufast_test_days_from_iso_week, c(2020, 2026), c(53, 1), c(7, 1)),
+                   as.double(unclass(as.Date(c("2021-01-03", "2025-12-29")))))
+})
