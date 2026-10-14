@@ -49,7 +49,8 @@ fast_datetime_fields <- function(x) {
 #'
 #' Writes a `POSIXct` as `YYYY-MM-DDTHH:MM:SS[.fff]Z` in UTC, or a `Date` as
 #' `YYYY-MM-DD`. Years outside 0000 to 9999 are written in the ISO 8601
-#' expanded form with a sign.
+#' expanded form with a sign and at least six digits, as in
+#' `"+010000-01-01"`, the spelling JavaScript's Temporal uses.
 #'
 #' @param x A `POSIXct` or `Date` vector.
 #' @param digits For `POSIXct`, the number of fraction digits, 0 to 9. `NULL`

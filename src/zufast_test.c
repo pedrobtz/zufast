@@ -419,16 +419,17 @@ static void fields_datetime(SEXP f, zuf_datetime *dt)
 }
 
 /* list(status, consumed, fields, timestamp seconds, days) */
-SEXP zufast_test_parse_datetime(SEXP raw, SEXP date_only)
+SEXP zufast_test_parse_datetime(SEXP raw, SEXP date_only, SEXP flags)
 {
+    uint32_t fl = (uint32_t)Rf_asInteger(flags);
     const char *s = (const char *)RAW(raw);
     zuf_datetime dt;
     zuf_result r;
     zuf_timestamp t;
     SEXP out = PROTECT(Rf_allocVector(VECSXP, 5));
     memset(&dt, 0xEE, sizeof dt);
-    r = Rf_asLogical(date_only) ? zuf_parse_date(s, s + XLENGTH(raw), &dt)
-                                : zuf_parse_datetime(s, s + XLENGTH(raw), &dt);
+    r = Rf_asLogical(date_only) ? zuf_parse_date_opt(s, s + XLENGTH(raw), &dt, fl)
+                                : zuf_parse_datetime_opt(s, s + XLENGTH(raw), &dt, fl);
     SET_VECTOR_ELT(out, 0, Rf_ScalarInteger((int)r.status));
     SET_VECTOR_ELT(out, 1, Rf_ScalarInteger((int)(r.ptr - s)));
     if (r.status == ZUF_OK) {
@@ -521,6 +522,52 @@ SEXP zufast_test_calendar_walk(SEXP lo, SEXP hi, SEXP step)
             if (!next_ok) bad++;
         }
         py = y; pm = m; pd = dd; have_prev = 1;
+    }
+    return Rf_ScalarReal(bad);
+}
+
+/* Expanded years: 1 January of every year in [lo, hi] through
+   zuf_format_date() and back through zuf_parse_date_opt() with
+   ZUF_DT_EXPANDED_YEAR; then `samples` random timestamps in the same span
+   through zuf_format_datetime() and zuf_parse_datetime_opt(). Returns the
+   number of failures. */
+SEXP zufast_test_expanded_roundtrip(SEXP lo, SEXP hi, SEXP samples)
+{
+    int32_t y, a = (int32_t)Rf_asReal(lo), b = (int32_t)Rf_asReal(hi);
+    int32_t d0 = zuf_days_from_civil(a, 1, 1), d1 = zuf_days_from_civil(b, 12, 31);
+    long i, n = (long)Rf_asReal(samples);
+    uint64_t rng = 0x9E3779B97F4A7C15u;
+    char buf[ZUF_DATETIME_MAX_CHARS];
+    double bad = 0;
+    for (y = a; y <= b; y++) {
+        zuf_datetime dt;
+        size_t len = zuf_format_date(buf, sizeof buf, zuf_days_from_civil(y, 1, 1));
+        zuf_result r = zuf_parse_date_opt(buf, buf + len, &dt, ZUF_DT_EXPANDED_YEAR);
+        if (r.status != ZUF_OK || r.ptr != buf + len || dt.year != y || dt.month != 1 || dt.day != 1) bad++;
+    }
+    for (i = 0; i < n; i++) {
+        zuf_datetime dt, back;
+        int32_t yy;
+        uint32_t mm, dd;
+        size_t len;
+        zuf_result r;
+        rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17;
+        memset(&dt, 0, sizeof dt);
+        zuf_civil_from_days(d0 + (int32_t)(rng % (uint64_t)((int64_t)d1 - d0 + 1)), &yy, &mm, &dd);
+        dt.year = yy; dt.month = (uint8_t)mm; dt.day = (uint8_t)dd;
+        dt.has_time = true;
+        dt.hour = (uint8_t)((rng >> 20) % 24); dt.minute = (uint8_t)((rng >> 28) % 60);
+        dt.second = (uint8_t)((rng >> 36) % 61);
+        dt.nanosecond = (uint32_t)((rng >> 8) % 1000000000u);
+        dt.has_offset = (rng >> 63) != 0;
+        if (dt.has_offset) dt.offset_seconds = 60 * (int32_t)((rng >> 44) % 2879) - 86340;
+        len = zuf_format_datetime(buf, sizeof buf, &dt);
+        r = zuf_parse_datetime_opt(buf, buf + len, &back, ZUF_DT_EXPANDED_YEAR);
+        if (r.status != ZUF_OK || r.ptr != buf + len || back.year != dt.year ||
+            back.month != dt.month || back.day != dt.day || back.hour != dt.hour ||
+            back.minute != dt.minute || back.second != dt.second || back.nanosecond != dt.nanosecond ||
+            back.has_offset != dt.has_offset || back.offset_seconds != dt.offset_seconds)
+            bad++;
     }
     return Rf_ScalarReal(bad);
 }

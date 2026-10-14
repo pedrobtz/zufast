@@ -22,7 +22,8 @@ about plus or minus 5.8 million years).
 \description{
 Writes a \code{POSIXct} as \verb{YYYY-MM-DDTHH:MM:SS[.fff]Z} in UTC, or a \code{Date} as
 \code{YYYY-MM-DD}. Years outside 0000 to 9999 are written in the ISO 8601
-expanded form with a sign.
+expanded form with a sign and at least six digits, as in
+\code{"+010000-01-01"}, the spelling JavaScript's Temporal uses.
 }
 \examples{
 fast_format_datetime(as.POSIXct("2024-03-01 12:30:00.25", tz = "UTC"))
