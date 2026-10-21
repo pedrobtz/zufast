@@ -2,8 +2,7 @@
 
 Writes a `POSIXct` as `YYYY-MM-DDTHH:MM:SS[.fff]Z` in UTC, or a `Date`
 as `YYYY-MM-DD`. Years outside 0000 to 9999 are written in the ISO 8601
-expanded form with a sign and at least six digits, as in
-`"+010000-01-01"`, the spelling JavaScript's Temporal uses.
+expanded form with a sign.
 
 ## Usage
 
@@ -36,7 +35,7 @@ minus 5.8 million years).
 fast_format_datetime(as.POSIXct("2024-03-01 12:30:00.25", tz = "UTC"))
 #> [1] "2024-03-01T12:30:00.250Z"
 fast_format_datetime(Sys.time(), digits = 0)
-#> [1] "2026-10-14T22:03:03Z"
+#> [1] "2026-10-21T20:38:45Z"
 fast_format_datetime(as.Date("2024-03-01"))
 #> [1] "2024-03-01"
 ```

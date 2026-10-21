@@ -28,16 +28,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedrobtz/zufast/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedrobtz/zufast/blob/0.1.0/DESCRIPTION)
 
 Baltazar P (2026). *zufast: Fast Portable 'C' Primitives for Parsing and
-Formatting Data*. R package version 0.1.0.9000,
+Formatting Data*. R package version 0.1.0,
 <https://pedrobtz.github.io/zufast/>.
 
     @Manual{,
       title = {zufast: Fast Portable 'C' Primitives for Parsing and Formatting Data},
       author = {Pedro Baltazar},
       year = {2026},
-      note = {R package version 0.1.0.9000},
+      note = {R package version 0.1.0},
       url = {https://pedrobtz.github.io/zufast/},
     }

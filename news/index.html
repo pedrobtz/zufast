@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">zufast</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,20 +35,11 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pedrobtz/zufast/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pedrobtz/zufast/blob/0.1.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.1" id="zufast-011">zufast 0.1.1<a class="anchor" aria-label="anchor" href="#zufast-011"></a></h2>
-<ul><li>
-<code>zufast/datetime.h</code>: ISO 8601 week dates. <code>zuf_weekday_from_days()</code>, <code>zuf_iso_week_from_days()</code> (week-numbering year and week), <code>zuf_iso_weeks_in_year()</code> and the inverse <code>zuf_days_from_iso_week()</code>, exact over the whole <code>int32_t</code> day range. Week dates are computed, not parsed.</li>
-<li>
-<code>zufast/datetime.h</code>: <code>zuf_parse_date_opt()</code> and <code>zuf_parse_datetime_opt()</code> take flags. <code>ZUF_DT_EXPANDED_YEAR</code> accepts expanded years, a sign and exactly six digits as in Temporal (<code>+010000-01-01</code>, <code>-271821-04-20</code>), and rejects <code>-000000</code>. <code>zuf_parse_date()</code> and <code>zuf_parse_datetime()</code> keep the four-digit grammar.</li>
-<li>Breaking change for years outside 0000 to 9999: <code>zuf_format_date()</code>, <code>zuf_format_datetime()</code> and <code><a href="../reference/fast_format_datetime.html">fast_format_datetime()</a></code> now pad expanded years to six digits (<code>+010000-01-01</code>, <code>-000001-01-01</code>), where 0.1.0 padded to five. The formatters now write the form that Temporal writes and that <code>ZUF_DT_EXPANDED_YEAR</code> reads. Years 0000 to 9999 are unchanged.</li>
-<li>New <code>zufast/wide.h</code>: 128-bit integers <code>zuf_i128</code> and <code>zuf_u128</code>, for Temporal’s epoch nanoseconds and durations in zutempo and for zuint. Both are two-word structs in every build. The header offers checked and wrapping add, subtract and multiply, the full 64 x 64 bit products, truncating and floor division by a 64- or 128-bit divisor, exact conversion to and from <code>double</code>, and decimal parsing and writing. The native <code>__int128</code> is used inside the functions where the compiler has it. Defining <code>ZUF_NO_INT128</code> selects the portable code, and the test suite checks that both give identical results.</li>
-</ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.0" id="zufast-010">zufast 0.1.0<a class="anchor" aria-label="anchor" href="#zufast-010"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.0" id="zufast-010">zufast 0.1.0<a class="anchor" aria-label="anchor" href="#zufast-010"></a></h2><p class="text-muted">CRAN release: 2026-10-21</p>
 <ul><li>Initial CRAN release: a header-only library of small, fast, portable C99 primitives, used by other packages through <code>LinkingTo: zufast</code> alone.</li>
 <li>
 <code>zufast/number.h</code>: correctly rounded parsing of <code>double</code>, <code>float</code> and 32/64-bit integers in any base 2 to 36 (with a JSON mode), through the vendored ffc.h, a C port of fast_float; shortest round-trip formatting in ECMAScript notation through the vendored Ryu; exact fixed-notation formatting and integer writers.</li>
@@ -60,8 +51,7 @@
 <li>
 <code><a href="../articles/linking.html">vignette("linking")</a></code> gives the consumer recipe.</li>
 </ul></div>
-  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
-    </nav></aside></div>
+  </main></div>
 
 
     <footer><div class="pkgdown-footer-left">
