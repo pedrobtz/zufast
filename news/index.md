@@ -1,5 +1,35 @@
 # Changelog
 
+## zufast 0.1.1
+
+- `zufast/datetime.h`: ISO 8601 week dates. `zuf_weekday_from_days()`,
+  `zuf_iso_week_from_days()` (week-numbering year and week),
+  `zuf_iso_weeks_in_year()` and the inverse `zuf_days_from_iso_week()`,
+  exact over the whole `int32_t` day range. Week dates are computed, not
+  parsed.
+- `zufast/datetime.h`: `zuf_parse_date_opt()` and
+  `zuf_parse_datetime_opt()` take flags. `ZUF_DT_EXPANDED_YEAR` accepts
+  expanded years, a sign and exactly six digits as in Temporal
+  (`+010000-01-01`, `-271821-04-20`), and rejects `-000000`.
+  `zuf_parse_date()` and `zuf_parse_datetime()` keep the four-digit
+  grammar.
+- Breaking change for years outside 0000 to 9999: `zuf_format_date()`,
+  `zuf_format_datetime()` and
+  [`fast_format_datetime()`](https://pedrobtz.github.io/zufast/reference/fast_format_datetime.md)
+  now pad expanded years to six digits (`+010000-01-01`,
+  `-000001-01-01`), where 0.1.0 padded to five. The formatters now write
+  the form that Temporal writes and that `ZUF_DT_EXPANDED_YEAR` reads.
+  Years 0000 to 9999 are unchanged.
+- New `zufast/wide.h`: 128-bit integers `zuf_i128` and `zuf_u128`, for
+  Temporal’s epoch nanoseconds and durations in zutempo and for zuint.
+  Both are two-word structs in every build. The header offers checked
+  and wrapping add, subtract and multiply, the full 64 x 64 bit
+  products, truncating and floor division by a 64- or 128-bit divisor,
+  exact conversion to and from `double`, and decimal parsing and
+  writing. The native `__int128` is used inside the functions where the
+  compiler has it. Defining `ZUF_NO_INT128` selects the portable code,
+  and the test suite checks that both give identical results.
+
 ## zufast 0.1.0
 
 CRAN release: 2026-10-21
