@@ -64,7 +64,7 @@ The one-line statement that governs every decision below:
 - time zone databases and named zones (`Europe/Zurich`): that layer belongs to R, the
   system, and `zeitig`;
 - hash tables, containers, allocators, logging, HTTP, compression, cryptography;
-- UUID generation, which needs randomness and belongs with `zurand`;
+- UUID generation, which needs operating-system entropy and belongs with `zuid` ([RFC 0043](https://github.com/pedrobtz/packages/blob/main/rfcs/started/0043-zuid-identifiers-beyond-uuid.md));
 - Unicode normalisation, collation, case folding, grapheme segmentation;
 - a bit-for-bit reimplementation of R's `R_strtod()` (§8.4);
 - a registered function table or a static archive (§4).
