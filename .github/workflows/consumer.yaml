@@ -5,8 +5,8 @@
 # shared object defines no global zuf_ or vendor symbol; then uninstall
 # zufast and prove the fixture still loads and passes.
 on:
-  push:
-    branches: [main, master]
+  # No `push:`: a pull request already checks its merge with main,
+  # and the schedule checks main (r-actions README, "Pushes to main").
   pull_request:
 
 name: consumer

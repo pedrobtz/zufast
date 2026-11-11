@@ -1,8 +1,11 @@
 # Design 18, 21.7: tools/vendor/verify on every push, and on pull requests a
 # change under the vendor tree must also change the manifest and checksums.
 on:
-  push:
-    branches: [main, master]
+  # No `push:`: a pull request already checks its merge with main,
+  # and the schedule checks main (r-actions README, "Pushes to main").
+  schedule:
+    - cron: "12 0 * * 0"
+  workflow_dispatch:
   pull_request:
 
 name: vendor
