@@ -2,8 +2,8 @@
 # a unit that includes everything and uses nothing is warning-free, and a
 # unit that calls every public function is warning-free, with GCC and clang.
 on:
-  push:
-    branches: [main, master]
+  # No `push:`: a pull request already checks its merge with main,
+  # and the schedule checks main (r-actions README, "Pushes to main").
   pull_request:
 
 name: abi

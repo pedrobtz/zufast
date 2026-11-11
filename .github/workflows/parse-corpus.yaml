@@ -2,7 +2,7 @@
 # zuf_parse_f64, weekly and on demand; too large for the test suite.
 on:
   schedule:
-    - cron: "17 4 * * 1"
+    - cron: "57 23 * * 6"
   workflow_dispatch:
 
 name: parse-corpus
