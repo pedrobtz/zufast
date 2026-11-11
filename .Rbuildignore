@@ -8,3 +8,8 @@
 ^cran-comments\.md$
 ^vignettes/articles$
 ^CRAN-SUBMISSION$
+^\.superpowers$
+^\.worktrees$
+^\.claude$
+^CLAUDE\.md$
+^AGENTS\.md$
