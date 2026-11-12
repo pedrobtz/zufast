@@ -3,7 +3,7 @@
 <!-- badges: start -->
 [![CRAN status](https://www.r-pkg.org/badges/version/zufast)](https://CRAN.R-project.org/package=zufast)
 [![R-CMD-check](https://github.com/pedrobtz/zufast/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedrobtz/zufast/actions/workflows/R-CMD-check.yaml)
-[![coverage](https://raw.githubusercontent.com/pedrobtz/zufast/main/.github/badges/coverage.svg)](https://github.com/pedrobtz/zufast/actions/workflows/coverage.yaml)
+[![coverage](https://raw.githubusercontent.com/pedrobtz/zufast/gh-pages/badges/coverage.svg)](https://github.com/pedrobtz/zufast/actions/workflows/coverage.yaml)
 <!-- badges: end -->
 
 zufast is a header-only library of small, fast, portable C99 primitives for
