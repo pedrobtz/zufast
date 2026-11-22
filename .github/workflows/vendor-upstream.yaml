@@ -24,7 +24,7 @@ jobs:
             repo: ulfjack/ryu
           - source: xxhash
             repo: Cyan4973/xxHash
-    uses: pedrobtz/r-actions/.github/workflows/vendor-upstream.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    uses: pedrobtz/r-actions/.github/workflows/vendor-upstream.yml@v1
     permissions:
       contents: read
       issues: write
