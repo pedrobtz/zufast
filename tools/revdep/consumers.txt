@@ -4,7 +4,9 @@
 # test. Blank lines and lines starting with # are ignored.
 pedrobtz/zubin      main
 pedrobtz/zudedup    main
-pedrobtz/zumsgpack  main
+# pedrobtz/zumsgpack  main  -- private: revdep.yml checks out consumers with
+#   the default GITHUB_TOKEN, which cannot read another private repository.
+#   Restore once zumsgpack is public or revdep.yml accepts a token.
 pedrobtz/zunpy      main
 pedrobtz/zupdf      main
 pedrobtz/zusvg      main
