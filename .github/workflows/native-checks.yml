@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   sanitizers:
-    uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@59c917ddee2cd0191f8f015016c4c76c4f2a8c87 # v1
+    uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@ae59a2805e622e9ba0f3e902bc5f39eba33c6670 # v1.45.1
     with:
       asan: true
       profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
