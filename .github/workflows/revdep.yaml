@@ -22,6 +22,6 @@ concurrency:
 
 jobs:
   revdep:
-    uses: pedrobtz/r-actions/.github/workflows/revdep.yml@17264ce002a9359a492e0183852a555a5bb866e7 # v1
+    uses: pedrobtz/r-actions/.github/workflows/revdep.yml@v1
     permissions:
       contents: read
