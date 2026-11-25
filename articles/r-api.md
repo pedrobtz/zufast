@@ -24,10 +24,10 @@ compiler.
 
 str(fast_info())
 #> List of 7
-#>  $ version      : chr "0.1.0"
+#>  $ version      : chr "0.1.1"
 #>  $ version_major: int 0
 #>  $ version_minor: int 1
-#>  $ version_patch: int 0
+#>  $ version_patch: int 1
 #>  $ compiler     : chr "gcc 15.2.0"
 #>  $ build        : Named chr [1:7] "202311" "true" "true" "3" ...
 #>   ..- attr(*, "names")= chr [1:7] "c_standard" "optimized" "ndebug" "fortify_source" ...

@@ -27,5 +27,5 @@ versions).
 
 ``` r
 fast_info()$version
-#> [1] "0.1.0"
+#> [1] "0.1.1"
 ```
