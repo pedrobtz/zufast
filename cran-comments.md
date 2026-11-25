@@ -1,8 +1,13 @@
 ## Submission
 
-First submission of zufast, a header-only library of C primitives that other
-packages use through `LinkingTo`. The R functions exist to test and
-demonstrate the C layer.
+Update of zufast, a header-only library of C primitives that other packages
+use through `LinkingTo`, from 0.1.0 (published 2026-10-21) to 0.1.1. It adds
+128-bit integers (`zufast/wide.h`) and ISO 8601 week dates, which two
+packages being prepared for CRAN need.
+
+One behaviour change: the date formatters now pad years outside 0000 to 9999
+to six digits instead of five, the form that the new expanded-year parser
+reads. Years 0000 to 9999 are formatted as before.
 
 ## Vendored code
 
@@ -47,6 +52,9 @@ Alongside it, on every merge:
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 0 notes
 
-* This is a new submission.
+## Reverse dependencies
+
+We checked the three CRAN reverse dependencies (zubin, zutoml and zuyaml)
+against this version, and none of them changed status.
