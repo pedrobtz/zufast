@@ -1,3 +1,5 @@
+# zufast (development version)
+
 # zufast 0.1.1
 
 * `zufast/datetime.h`: ISO 8601 week dates. `zuf_weekday_from_days()`,
