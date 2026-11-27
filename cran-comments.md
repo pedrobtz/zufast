@@ -32,23 +32,30 @@ The vendored headers are compiled with `-Wpedantic`, `-Wunused-function` and
 `inst/include/zufast/detail/vendor_config.h`, scoped to the vendored files
 only; no diagnostic CRAN treats as important is suppressed.
 
+## Method references
+
+The number conversions come from published work: Ryu (Adams 2018,
+<doi:10.1145/3192366.3192369>) and fast_float (Lemire 2021,
+<doi:10.1002/spe.2984>). They are credited in `Authors@R` and
+`inst/COPYRIGHTS`; we can add them to Description if preferred.
+
 ## Test environments
 
 The pre-submission check is the R CMD check matrix of the
-pedrobtz/r-actions `r-cmd-check.yml` workflow, run with `--as-cran` on
-every merge:
+pedrobtz/r-actions `r-cmd-check.yml` workflow, run with `--as-cran` in full
+on the release commit:
 
 * GitHub Actions: macOS (R release), Windows (R release and R-devel),
   Ubuntu (R release and oldrel-1).
 * CRAN-like containers: r-devel with GCC 16, clang 23, ubuntu-clang; the
   NOSUGGESTS and NOLD flavors.
 
-Alongside it, on every merge:
+Alongside it, on the same commit:
 
 * r-devel under ASan and UBSan (GCC and clang), valgrind, LTO, rchk,
   `-fanalyzer`, and CRAN's rcnst, rlibro and vnu checks; the test suite
   under `gctorture2(step = 100)`.
-* Linux i386 (32-bit), musl (Alpine) and s390x (big-endian), weekly.
+* musl (Alpine) and s390x (big-endian).
 
 ## R CMD check results
 
